@@ -1,0 +1,97 @@
+import dotenv from 'dotenv';
+
+import { TelemetryClient } from './telemetryClient.js';
+import { sleep } from './utils.js';
+import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
+import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
+
+dotenv.config(process.env);
+
+/**
+ * Environment variables used to configure the application.
+ * 
+ * @property {number} NUMBER_OF_DAYS_TO_BACK_QUERY - The number of days to go back when querying data.
+ * @property {number} TIME_OF_DAY_TO_QUERY_FROM - The time of day to start querying data.
+ */
+const {
+  NUMBER_OF_DAYS_TO_BACK_QUERY,
+  TIME_OF_DAY_TO_QUERY_FROM
+} = process.env;
+
+// Initialize the telemetry client.
+const telemetryClient = new TelemetryClient();
+
+// Initialize the DevOps service.
+const devOpsService = new DevOpsService(telemetryClient);
+
+try {
+  let queryDate = new Date();
+  queryDate.setDate(queryDate.getDate()-NUMBER_OF_DAYS_TO_BACK_QUERY);
+  const timeOfDayToQueryFrom = Number(TIME_OF_DAY_TO_QUERY_FROM);
+  queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
+  queryDate = new Date(queryDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+
+  // Calling sleep is necessary to ensure parameters are set before calling the services.
+  await sleep(1000);
+
+  /**
+   * Initializes the StackOverflowService, InternalStackOverflowService, and GitHubService with the necessary configuration and dependencies.
+   * 
+   * The StackOverflowService is responsible for retrieving and processing data from the public StackOverflow API.
+   * The InternalStackOverflowService is responsible for retrieving and processing data from the internal StackOverflow API.
+   * The GitHubService is responsible for retrieving and processing data from the GitHub API.
+   * 
+   * These services are used to gather data from various sources that are then processed and integrated into the application.
+   * 
+   * @param {Object} StackOverflow - The configuration object for the StackOverflow API.
+   * @param {Object} InternalStackOverflow - The configuration object for the internal StackOverflow API.
+   * @param {Object} GitHub - The configuration object for the GitHub API.
+   * @param {Date} queryDate - The date used to query the data sources.
+   */
+  const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient);
+  const internalStackOverflowService = new InternalStackOverflowService(InternalStackOverflow, queryDate, telemetryClient);
+  const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient);
+
+  const startTime = new Date();
+  startTime.setDate(startTime.getDate());
+  console.info(`Starting Processes: ${ startTime.toUTCString() }`)
+  telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toUTCString() } });
+
+  /**
+   * Processes the data from the StackOverflow and GitHub services.
+   * 
+   * This code is part of the main application logic that orchestrates the data retrieval and processing from various services.
+   */
+  console.log('\nProcessing StackOverflow...')
+  await stackOverflowService.process()
+    .then(res => {
+      if (res.status === 204 || res.status === 200) {
+        console.warn('Process status:', res.message);
+      }
+    });
+
+  console.log('\nProcessing Internal StackOverflow...')
+  await internalStackOverflowService.process()
+    .then(res => {
+      if (res.status === 204 || res.status === 200) {
+        console.warn('Process status:', res.message);
+      }
+    });
+
+  console.log('\nProcessing GitHub...')
+  await gitHubService.process()
+    .then(res => {
+      if (res.status === 204 || res.status === 200) {
+        console.warn('Process status:', res.message);
+        const endTime = new Date();
+        endTime.setDate(endTime.getDate());
+        console.info(`\nFinished Processes: ${ endTime.toUTCString() }`);
+        telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toUTCString() } });
+
+        telemetryClient.flushClient();
+        process.exit();
+      }
+    });
+} catch (error) {
+  devOpsService.errorHandler(error, 'StackOverflowService');
+}

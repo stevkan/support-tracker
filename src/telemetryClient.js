@@ -1,0 +1,114 @@
+import applicationInsights from 'applicationinsights'; //Dana
+
+/**
+ * Environment variables used to configure the application.
+ * 
+ * @property {string} APPINSIGHTS_INSTRUMENTATION_KEY - The instrumentation key for Application Insights.
+ */
+const {
+  APPINSIGHTS_INSTRUMENTATION_KEY
+} = process.env;
+
+/**
+ * TelemetryClient class for tracking telemetry events, exceptions, traces, HTTP requests and responses, and metrics.
+ * @class
+ */
+class TelemetryClient {
+  /**
+   * Initializes the Application Insights telemetry client and configures it to automatically collect console logs and HTTP requests.
+   * Sets the cloud role name for the telemetry context.
+   */
+  constructor() {
+    applicationInsights.Configuration.setAutoCollectConsole(true, true);
+    applicationInsights.Configuration.setAutoCollectRequests(true, true);applicationInsights.setup(APPINSIGHTS_INSTRUMENTATION_KEY).start();
+
+    console.info('Telemetry client initialized');
+    console.info('Auto collecting console logs');
+    console.info('Auto collecting requests\n');
+    
+    const telemetry = applicationInsights.defaultClient;
+    telemetry.context.tags['ai.cloud.role'] = 'Support-Tracker-App';
+    this.telemetry = telemetry;
+  }
+
+  /**
+   * Tracks a custom event with optional measurements.
+   * @param {string} name - The name of the event to track.
+   * @param {object} [measurements] - An optional object containing key-value pairs of measurements to associate with the event.
+   */
+  trackEvent(name, measurements = null) {
+    this.telemetry.trackEvent({
+      name: name,
+      measurements: measurements
+    });
+  }
+
+  /**
+   * Tracks an exception with optional measurements and severity.
+   * @param {Error} exception - The exception to track.
+   * @param {object} [measurements] - An optional object containing key-value pairs of measurements to associate with the exception.
+   * @param {string} [severity] - An optional severity level for the exception.
+   */
+  trackException(exception, measurements = null, severity = null) {
+    this.telemetry.trackException({
+      exception: exception,
+      measurements: measurements,
+      severity: severity
+    });
+  }
+
+  /**
+   * Tracks a trace message with an optional severity level.
+   * @param {string} message - The trace message to track.
+   * @param {string} [severity] - An optional severity level for the trace message.
+   */
+  trackTrace(message, severity = null) {
+    this.telemetry.trackTrace({
+      message: message,
+      severity: severity
+    });
+  }
+  
+  /**
+   * Tracks an HTTP request and response.
+   * @param {http.IncomingMessage} request - The incoming HTTP request.
+   * @param {http.ServerResponse} response - The outgoing HTTP response.
+   */
+  trackHttpRequestAndResponse(request, response) {
+    this.telemetry.trackNodeHttpRequest({
+      request: request,
+      response: response
+    });
+  }
+
+  /**
+   * Tracks a custom metric with optional parameters.
+   * @param {string} name - The name of the metric to track.
+   * @param {number} value - The value of the metric to track.
+   * @param {string} [kind] - An optional kind or type of the metric.
+   * @param {number} [count] - An optional count associated with the metric.
+   * @param {number} [min] - An optional minimum value associated with the metric.
+   * @param {number} [max] - An optional maximum value associated with the metric.
+   * @param {number} [stdDev] - An optional standard deviation associated with the metric.
+   */
+  trackMetric(name, value, kind = null, count = null, min = null, max = null, stdDev = null) {
+    this.telemetry.trackMetric({
+      name: name,
+      value: value,
+      kind: kind,
+      count: count,
+      min: min,
+      max: max,
+      stdDev
+    });
+  }
+
+  /**
+   * Flushes the telemetry client, sending any pending telemetry data.
+   */
+  flushClient() {
+    this.telemetry.flush();
+  }
+}
+
+export { TelemetryClient };
