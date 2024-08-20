@@ -63,6 +63,7 @@ class GitHubService extends DevOpsService {
    */
   async process() {
     try {
+      const existingIssuesDetails = [];
       const unassignedIssues = [];
 
       /**
@@ -73,6 +74,12 @@ class GitHubService extends DevOpsService {
        * @returns {Promise<Array>} - A promise that resolves to an array of issues fetched from the GitHub repositories.
        */
       const items = await Promise.all(this.repositories.map(async repository => await this.getIssues(repository)));
+      if (items.length === 0) {
+        return {
+          status: 200,
+          message: 'No new issues found.'
+        };
+      }
       const uniqueIssues = removeDuplicates(items, ({ node: { url }}) => url);
 
       /**
@@ -110,27 +117,19 @@ class GitHubService extends DevOpsService {
         "Custom.IssueURL": `<a href="${url}"> ${url}</a>`
       }));
 
+      console.group('GitHub Results:');
       console.warn('Issues Found:', issues.length);
-      for (const issue of issues) {
-        console.debug('Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-      }
+      // for (const issue of issues) {
+      //   console.debug('New Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
+      // }
+      console.table(issues, ['Custom.IssueID', 'System.Title']);
+      console.groupEnd();
 
-      let existingIssueDetails = [];
+      console.groupCollapsed('Possible Matching DevOps Issues:');
+
       let issueExists = false;
       
-      /**
-       * Checks if an existing GitHub issue already exists in the DevOps system.
-       * 
-       * This function iterates through the list of issues retrieved from GitHub and checks if they already exist in the DevOps system.
-       * It uses the `searchWorkItemByIssueId` and `getWorkItemByUrl` methods to check for existing issues.
-       * If an existing issue is found, its details are added to the `existingIssueDetails` array.
-       * If no existing issue is found, the issue is added to the `unassignedIssues` array.
-       * 
-       * @param {Array} issues - The array of GitHub issues to check.
-       * @param {Array} existingIssueDetails - The array to store details of existing issues.
-       * @param {Array} unassignedIssues - The array to store issues that do not have a matching DevOps work item.
-       * @returns {boolean} - Returns true if the issue already exists in the DevOps system, false otherwise.
-       */
+      // Processes the unassigned issues by converting the issue description to plain text.
       for (const issue of issues) {
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
         /**
@@ -147,13 +146,13 @@ class GitHubService extends DevOpsService {
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists: ', existingIssuesResponse.data.workItems.length);
           unassignedIssues.push(issue);
-          break;
+          // break;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         else if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
           const existingIssues = existingIssuesResponse.data.workItems;
+
           for (const existingIssue of existingIssues) {
-            
             /**
              * Retrieves the details of the possible matching work item in the DevOps system by its URL.
              * 
@@ -169,46 +168,57 @@ class GitHubService extends DevOpsService {
               // Do nothing and continue to next iteration.
             }
             else if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.id) {
-              console.debug('Possible DevOps Issue Match:', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-              existingIssueDetails.push(getWorkItemByUrlResponse.data);
+              // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
+              existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
+
+              // This function compares the issue title and repository name of the existing issue to the current issue.
+              // If the issue title and repository name match, the issue is considered a duplicate and true is returned.
+              issueExists = () => {
+                if (getWorkItemByUrlResponse.data.fields['System.Title'] === issue['System.Title'] && getWorkItemByUrlResponse.data.fields['Custom.Repository'] === issue['Custom.Repository']) {
+                  // console.debug('Issue already exists:', { 'id': detail.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
+                  return getWorkItemByUrlResponse.data;
+                }
+                return false;
+              }
             }
           }
-        }
-
-        // This function compares the issue title and repository name of the existing issue to the current issue.
-        // If the issue title and repository name match, the issue is considered a duplicate and true is returned.
-        issueExists = () => {
-          for (const detail of existingIssueDetails) {
-            if (detail.fields['System.Title'] === issue['System.Title'] && detail.fields['Custom.Repository'] === issue['Custom.Repository']) {
-              // console.debug('Issue already exists:', { 'id': detail.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-              return true;
-            }
-          }
-        }
-
-        // If the issue already exists, returns a status code of 204 and a message indicating that no new issues need to be added.
-        // If the issue does not exist, the issue is added to the `unassignedIssues` array.
-        if (issueExists() === true) return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
-        else {
-          unassignedIssues.push(issue);
         }
       };
       
+      console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+
+      // If the issue already exists, returns a status code of 204 and a message indicating that no new issues need to be added.
+      // If the issue does not exist, the issue is added to the `unassignedIssues` array.
+      if (issueExists() === false) {
+        console.groupEnd();
+        return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
+      }
+      else {
+        const issue = issueExists(); 
+        unassignedIssues.push(issue);
+      }
+
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
+        console.groupEnd();
         console.warn('No new issues to add');
         return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
       }
-
+      console.groupEnd();
       console.warn('Issues New to DevOps:', unassignedIssues.length);
+
+      console.group('New DevOps Issues');
 
       // Processes the unassigned issues by converting the issue description to plain text.
       for (const issue of unassignedIssues) {
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
-        console.debug('New GitHub Issue:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
+        // console.debug('New GitHub Issue:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
       }
+
+      console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      console.groupEnd();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {

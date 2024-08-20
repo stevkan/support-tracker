@@ -71,6 +71,7 @@ class StackOverflowService extends DevOpsService {
    */
   async process() {
     try {
+      const existingIssuesDetails = [];
       const unassignedIssues = [];
 
       /**
@@ -116,31 +117,40 @@ class StackOverflowService extends DevOpsService {
         "Custom.IssueURL": `<a href="${this.getUrl(question_id)}"> ${this.getUrl(question_id)} </a>`
       }));
 
+      console.group('Stack Overflow Results:');
       console.warn('Posts Found:', issues.length);
-      for (const issue of issues) {
-        console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-      }
+      // for (const issue of issues) {
+      //   console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
+      // }
+      console.table(issues, ['Custom.IssueID', 'System.Title']);
+      console.groupEnd();
 
-      let existingIssueDetails = [];
+      console.groupCollapsed('Possible Matching DevOps Issues:');
 
       // Processes the unassigned issues by converting the issue description to plain text.
       for (const issue of issues) {
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
-        
+        /**
+         * Searches for possible existing work item in the DevOps system by its GitHub issue ID.
+         *
+         * This method makes a request to the DevOps API to check if a work item already exists in any repository for the given GitHub issue ID.
+         *
+         * @param {number} issueId - The GitHub issue ID to search for.
+         * @returns {Promise<Object>} - The response from the DevOps API containing the existing work item details, if any.
+         */
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID']);
 
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists:', existingIssuesResponse.data.workItems.length);
           unassignedIssues.push(issue);
-          break;
+          // break;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         else if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
-            // console.debug('Existing Issue Found:', existingIssue['url']);
             /**
              * Retrieves the details of the possible matching work item in the DevOps system by its URL.
              * 
@@ -150,32 +160,24 @@ class StackOverflowService extends DevOpsService {
              * @returns {Promise<Object>} - The response from the DevOps API containing the details of the existing work item.
              */
             const getWorkItemByUrlResponse = await this.getWorkItemByUrl(existingIssue['url']);
+
             if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data === undefined) {
               // console.debug('No Matching Issues Exists:', existingIssuesResponse.data);
               // Do nothing and continue to next iteration.
             }
             else if (getWorkItemByUrlResponse.status === 200 && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
-              console.debug('Possible DevOps Issue Match:', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-              existingIssueDetails.push(getWorkItemByUrlResponse.data);
+              // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
+              existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
             }
           }
         }
 
-        // This function compares the issue title and repository name of the existing issue to the current issue.
-        // If the issue title and repository name match, the issue is considered a duplicate and true is returned.
-        // issueExists = () => {
-        //   for (const detail of existingIssueDetails) {
-        //     // console.debug('Issue already exists:', detail.fields['System.Title'], issue['System.Title']);
-        //     if (detail.fields['System.Title'] === issue['System.Title']) {
-        //       console.debug('Issue already exists:', { 'id': detail.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-        //       return true;
-        //     }
-        //   }
-        // }
-
+        console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+        
         // If the issue already exists, returns a status code of 204 and a message indicating that no new issues need to be added.
         // If the issue does not exist, the issue is added to the `unassignedIssues` array.
-        if (existingIssueDetails.length > 0) {
+        if (existingIssuesDetails.length > 0) {
+          console.groupEnd();
           return { status: axios.HttpStatusCode.NoContent, message: 'No new posts to add' };
         }
         else {
@@ -187,16 +189,23 @@ class StackOverflowService extends DevOpsService {
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
+        console.groupEnd();
+        console.warn('No new posts to add');
         return { status: axios.HttpStatusCode.NoContent, message: 'No new posts to add' };
       }
+      console.groupEnd();
+      console.warn('Posts New to DevOps: ', unassignedIssues.length);
 
-      console.warn('# of New SO Posts: ', unassignedIssues.length);
+      console.group('New DevOps Issues:');
 
       // Processes the unassigned issues by converting the issue description to plain text.
       for (const issue of unassignedIssues) {
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
-        console.debug('New SO Post:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
+        // console.debug('New SO Post:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
       }
+
+      console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      console.groupEnd();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
