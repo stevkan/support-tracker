@@ -16,9 +16,10 @@
  * The class also includes utility methods for handling GitHub API configuration and error handling.
  */
 import axios from 'axios';
+import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
 import { DevOpsService } from './index.js';
-import { getSdk, removeDuplicates } from '../utils.js';
+import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
 const htmlToTextOptions = {
   wordwrap: false,
@@ -47,7 +48,6 @@ class GitHubService extends DevOpsService {
     this.source = source;
     this.lastRun = lastRun;
     this.telemetryClient = telemetryClient;
-    // this.assignedIssues = assignedIssues;
   }
 
   /**
@@ -73,13 +73,27 @@ class GitHubService extends DevOpsService {
        *
        * @returns {Promise<Array>} - A promise that resolves to an array of issues fetched from the GitHub repositories.
        */
-      const items = await Promise.all(this.repositories.map(async repository => await this.getIssues(repository)));
-      if (items.length === 0) {
+      // const items = await Promise.all(this.repositories.map(async repository => await this.getIssues(repository)));
+      const queue = this.repositories.map(repository => async () => await this.getIssues(repository));
+      const items = [];
+      for (const task of queue) {
+        const result = await task();
+        if (result.length === 0) {
+          continue;
+        }
+        else {
+          items.push(...result);
+        }
+      }
+
+      if (areObjectsInArrayEmpty(items )=== true || items.length === 0) {
+        console.groupEnd();
         return {
           status: 200,
           message: 'No new issues found.'
         };
       }
+      console.groupEnd();
       const uniqueIssues = removeDuplicates(items, ({ node: { url }}) => url);
 
       /**
@@ -117,21 +131,21 @@ class GitHubService extends DevOpsService {
         "Custom.IssueURL": `<a href="${url}"> ${url}</a>`
       }));
 
-      console.group('GitHub Results:');
-      console.warn('Issues Found:', issues.length);
+      console.group(chalk.blue('GitHub Results:'));
+      console.log('Issues Found:', issues.length);
       // for (const issue of issues) {
       //   console.debug('New Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
 
-      console.groupCollapsed('Possible Matching DevOps Issues:');
-
-      let issueExists = false;
+      console.groupCollapsed(chalk.blue('Possible Matching DevOps Issues:'));
       
-      // Processes the unassigned issues by converting the issue description to plain text.
+      // Iterates over the GitHub issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
+        // Processes the unassigned issues by converting the issue description to plain text.
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
+
         /**
          * Searches for possible existing work item in the DevOps system by its GitHub issue ID.
          *
@@ -145,8 +159,7 @@ class GitHubService extends DevOpsService {
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists: ', existingIssuesResponse.data.workItems.length);
-          unassignedIssues.push(issue);
-          // break;
+          continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         else if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
@@ -164,38 +177,30 @@ class GitHubService extends DevOpsService {
             const getWorkItemByUrlResponse = await this.getWorkItemByUrl(existingIssue['url']);
 
             if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data === undefined) {
-              // console.debug('No Matching Issues Exists:', existingIssuesResponse.data);
+              // console.debug('No Matching Issues Exist:', existingIssuesResponse.data);
               // Do nothing and continue to next iteration.
             }
             else if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.id) {
               // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
               existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
-
-              // This function compares the issue title and repository name of the existing issue to the current issue.
-              // If the issue title and repository name match, the issue is considered a duplicate and true is returned.
-              issueExists = () => {
-                if (getWorkItemByUrlResponse.data.fields['System.Title'] === issue['System.Title'] && getWorkItemByUrlResponse.data.fields['Custom.Repository'] === issue['Custom.Repository']) {
-                  // console.debug('Issue already exists:', { 'id': detail.id, 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-                  return getWorkItemByUrlResponse.data;
-                }
-                return false;
-              }
             }
           }
         }
       };
       
-      console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
-
-      // If the issue already exists, returns a status code of 204 and a message indicating that no new issues need to be added.
-      // If the issue does not exist, the issue is added to the `unassignedIssues` array.
-      if (issueExists() === false) {
-        console.groupEnd();
-        return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
+      if (existingIssuesDetails === undefined || existingIssuesDetails.length === 0) {
+        console.log(chalk.red('No Matching Issues Exist\n'));
       }
       else {
-        const issue = issueExists(); 
-        unassignedIssues.push(issue);
+        console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+  
+        // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
+        for (const issue of issues) {
+          const exists = existingIssuesDetails.map(existingIssue => existingIssue['Custom.IssueID'] === issue['Custom.IssueID'] && existingIssue['System.Title'] === issue['System.Title']).includes(true);
+          if (!exists) {
+            unassignedIssues.push(issue);
+          }
+        }
       }
 
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
@@ -203,19 +208,13 @@ class GitHubService extends DevOpsService {
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
         console.groupEnd();
-        console.warn('No new issues to add');
+        // console.log('No new issues to add');
         return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
       }
       console.groupEnd();
-      console.warn('Issues New to DevOps:', unassignedIssues.length);
-
-      console.group('New DevOps Issues');
-
-      // Processes the unassigned issues by converting the issue description to plain text.
-      for (const issue of unassignedIssues) {
-        issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
-        // console.debug('New GitHub Issue:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
-      }
+      
+      console.group(chalk.blue('DevOps Results'));
+      console.log('Issues New to DevOps:', unassignedIssues.length);
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
@@ -238,11 +237,83 @@ class GitHubService extends DevOpsService {
    * @returns {Promise<Object[]>} - An array of GitHub issue objects.
    */
   async getIssues({ org, repo, labels, ignoreLabels = [] }) {
+    console.log('Fetching ' + chalk.yellow(repo) + ' issues...');
+    await sleep(200);
+
+    const emptyData = [];
+    const testData = [
+      {
+        "node": {
+          "createdAt": "2024-08-19T21:43:47Z",
+          "labels": {
+            "nodes": [
+              {
+                "name": "bug"
+              },
+              {
+                "name": "Area: Teams"
+              }
+            ]
+          },
+          "number": 6842,
+          "repository": {
+            "name": "botbuilder-dotnet"
+          },
+          "timelineItems": {
+            "edges": [
+              {
+                "node": {
+                  "__typename": "LabeledEvent",
+                  "createdAt": "2024-08-19T21:43:47Z",
+                  "label": {
+                    "name": "bug"
+                  }
+                }
+              },
+              {
+                "node": {
+                  "__typename": "LabeledEvent",
+                  "createdAt": "2024-08-19T21:43:48Z",
+                  "label": {
+                    "name": "Area: Teams"
+                  }
+                }
+              },
+              {
+                "node": {
+                  "__typename": "AssignedEvent"
+                }
+              },
+              {
+                "node": {
+                  "__typename": "IssueComment"
+                }
+              },
+              {
+                "node": {
+                  "__typename": "MentionedEvent"
+                }
+              },
+              {
+                "node": {
+                  "__typename": "SubscribedEvent"
+                }
+              }
+            ]
+          },
+          "title": "TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter",
+          "url": "https://github.com/microsoft/botbuilder-dotnet/issues/6842"
+        }
+      }
+    ];
+
     const config = this.getGitHubConfig();
 
     if (labels) {
+      // return testData;
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config);
     } else {
+      // return testData
       return this.getIssuesWithoutLabels(org, repo, ignoreLabels, config);
     }
   }

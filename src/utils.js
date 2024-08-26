@@ -1,4 +1,16 @@
 /**
+ * Checks if all elements in an array of arrays are zero.
+ *
+ * @param {Array<Array<number>>} arr - The array of arrays to check.
+ * @returns {boolean} - True if all elements in the array of arrays are zero, false otherwise.
+ */
+const areObjectsInArrayEmpty = arr => {
+  if (Array.isArray(arr[0])) arr.every(subArr => subArr.every(num => num === 0))
+  else if (arr.length === 0) true;
+  return false;
+};
+
+/**
  * Removes duplicates from an array of items.
  *
  * @param {Array} items - The array of items.
@@ -47,4 +59,4 @@ const getSdk = (repository) => {
  */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export { getSdk, removeDuplicates, sleep }
+export { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep }

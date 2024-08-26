@@ -1,4 +1,5 @@
 import axios from 'axios';
+import chalk from 'chalk';
 
 /**
  * Represents an error handler.
@@ -18,13 +19,13 @@ class ErrorHandler {
  */
   errorHandler(error, serviceName) {
     if (error instanceof axios.AxiosError) {
-      console.error(`API request failed in ${ serviceName }:  ${ error.stack }`);
+      console.error(chalk.red(`API request failed in ${ serviceName }:  ${ error.stack }`));
     } else if (error instanceof TypeError) {
-      console.error(`Type error in ${ serviceName }:  ${ error.stack }`);
+      console.error(chalk.red(`Type error in ${ serviceName }:  ${ error.stack }`));
     } else if (error instanceof ReferenceError) {
-      console.error(`Reference error in ${ serviceName }:  ${ error.stack }`);
+      console.error(chalk.red(`Reference error in ${ serviceName }:  ${ error.stack }`));
     } else {
-      console.error(`Unexpected error in ${ serviceName }:  ${ error.stack }`);
+      console.error(chalk.red(`Unexpected error in ${ serviceName }:  ${ error.stack }`));
     }
     
     this.telemetryClient.trackException({

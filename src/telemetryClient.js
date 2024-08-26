@@ -1,4 +1,5 @@
 import applicationInsights from 'applicationinsights'; //Dana
+import chalk from 'chalk';
 
 /**
  * Environment variables used to configure the application.
@@ -22,9 +23,9 @@ class TelemetryClient {
     applicationInsights.Configuration.setAutoCollectConsole(true, true);
     applicationInsights.Configuration.setAutoCollectRequests(true, true);applicationInsights.setup(APPINSIGHTS_INSTRUMENTATION_KEY).start();
 
-    console.info('Telemetry client initialized');
-    console.info('Auto collecting console logs');
-    console.info('Auto collecting requests\n');
+    console.info(chalk.hex('#8d8219')('[AppInsights] Telemetry client initialized'));
+    console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting console logs'));
+    console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting requests\n'));
     
     const telemetry = applicationInsights.defaultClient;
     telemetry.context.tags['ai.cloud.role'] = 'Support-Tracker-App';
