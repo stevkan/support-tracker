@@ -24,9 +24,10 @@
  *   provided question ID.
  */
 import axios from 'axios';
+import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
 import { DevOpsService } from './index.js';
-import { removeDuplicates, sleep } from '../utils.js';
+import { areObjectsInArrayEmpty, removeDuplicates, sleep } from '../utils.js';
 
 const htmlToTextOptions = {
   wordwrap: false,
@@ -83,13 +84,27 @@ class StackOverflowService extends DevOpsService {
        *
        * @returns {Promise<Object[]>} - An array of question objects fetched from Stack Overflow.
        */
-      const items = await Promise.all(this.tags.map(async tag => await this.getIssues(tag)));
-      if (items.length === 0) {
+
+      const queue = this.tags.map(tag => async () => await this.getIssues(tag));
+      const items = [];
+      for (const task of queue) {
+        const result = await task();
+        if (result.length === 0) {
+          continue;
+        }
+        else {
+          items.push(...result);
+        }
+      }
+
+      if (areObjectsInArrayEmpty(items) === true || items.length === 0) {
+        console.groupEnd();
         return {
           status: 200,
-          message: 'No new issues found.'
+          message: 'No new posts found.'
         };
       }
+      console.groupEnd();
       const uniqueIssues = removeDuplicates(items, ({ question_id }) => question_id);
 
       /**
@@ -117,19 +132,21 @@ class StackOverflowService extends DevOpsService {
         "Custom.IssueURL": `<a href="${this.getUrl(question_id)}"> ${this.getUrl(question_id)} </a>`
       }));
 
-      console.group('Stack Overflow Results:');
-      console.warn('Posts Found:', issues.length);
+      console.group(chalk.blue('Stack Overflow Results:'));
+      console.log('Posts Found:', issues.length);
       // for (const issue of issues) {
       //   console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
 
-      console.groupCollapsed('Possible Matching DevOps Issues:');
+      console.groupCollapsed(chalk.blue('Possible Matching DevOps Issues:'));
 
-      // Processes the unassigned issues by converting the issue description to plain text.
+      // Iterates over the Stack Overflow issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
+        // Processes the unassigned issues by converting the issue description to plain text.
         issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
+
         /**
          * Searches for possible existing work item in the DevOps system by its GitHub issue ID.
          *
@@ -143,11 +160,10 @@ class StackOverflowService extends DevOpsService {
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists:', existingIssuesResponse.data.workItems.length);
-          unassignedIssues.push(issue);
-          // break;
+          continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
-        else if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
+        if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
@@ -167,42 +183,39 @@ class StackOverflowService extends DevOpsService {
             }
             else if (getWorkItemByUrlResponse.status === 200 && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
               // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
-              existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
+              existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
             }
           }
         }
+      };
 
+      if (existingIssuesDetails === undefined || existingIssuesDetails.length === 0) {
+        console.log(chalk.red('No Matching Issues Exist\n'));
+      }
+      else {
         console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
         
-        // If the issue already exists, returns a status code of 204 and a message indicating that no new issues need to be added.
-        // If the issue does not exist, the issue is added to the `unassignedIssues` array.
-        if (existingIssuesDetails.length > 0) {
-          console.groupEnd();
-          return { status: axios.HttpStatusCode.NoContent, message: 'No new posts to add' };
+        // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
+        for (const issue of issues) {
+          const exists = existingIssuesDetails.map(existingIssue => existingIssue['Custom.IssueID'] === issue['Custom.IssueID'] && existingIssue['System.Title'] === issue['System.Title']).includes(true);
+          if (!exists) {
+            unassignedIssues.push(issue);
+          }
         }
-        else {
-          unassignedIssues.push(issue);
-        }
-      };
+      }
       
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
         console.groupEnd();
-        console.warn('No new posts to add');
+        // console.log('No new posts to add');
         return { status: axios.HttpStatusCode.NoContent, message: 'No new posts to add' };
       }
       console.groupEnd();
-      console.warn('Posts New to DevOps: ', unassignedIssues.length);
-
-      console.group('New DevOps Issues:');
-
-      // Processes the unassigned issues by converting the issue description to plain text.
-      for (const issue of unassignedIssues) {
-        issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
-        // console.debug('New SO Post:', { 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'] });
-      }
+      
+      console.group(chalk.blue('DevOps Results:'));
+      console.log('Posts New to DevOps: ', unassignedIssues.length);
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
@@ -252,6 +265,7 @@ class StackOverflowService extends DevOpsService {
 
     const headers = {
       ...configHeaders,
+      'User-Agent': 'StackOverflowService'
     }
     const urlPath = url ? url : 'https://api.stackexchange.com/2.2/questions';
     const response = await axios.get(urlPath, { params, headers });
@@ -287,8 +301,68 @@ class StackOverflowService extends DevOpsService {
    * @throws {Error} - If there is an error fetching the Stack Overflow issues.
    */
   async getIssues(tagged) {
-    sleep(1500);
+    console.log('Fetching ' + chalk.yellow(tagged) + ' tagged posts...');
+    await sleep(1000);
+
+    const emptyData = [];
+    const testData = [
+      {
+        "tags": [
+          "azure",
+          "botframework",
+          "azure-bot-service"
+        ],
+        "owner": {
+          "reputation": 1,
+          "user_id": 21354185,
+          "user_type": "registered",
+          "profile_image": "https://lh3.googleusercontent.com/a/AGNmyxYbsTM6CYeUTuC-If1UBAaWftVrIdgIN1qX21kw=k-s256",
+          "display_name": "Rama Chaker",
+          "link": "https://stackoverflow.com/users/21354185/rama-chaker"
+        },
+        "is_answered": false,
+        "view_count": 19,
+        "answer_count": 0,
+        "score": 0,
+        "last_activity_date": 1724239503,
+        "creation_date": 1724239503,
+        "question_id": 78853530,
+        "content_license": "CC BY-SA 4.0",
+        "link": "https://stackoverflow.com/questions/78853530/unable-to-tag-or-add-the-response-message-as-a-part-of-the-conversation-thread-from-the-bot-to-the-request-from-the-user-in-skype",
+        "title": "Unable to tag or add the response message as a part of the conversation thread from the bot to the request from the user in skype",
+        "body": "<p>I have successfully created my chatbot using Microsoft Bot Framework SDK v4 and tested it successfully on the bot emulator and deployed it on azure(Azure Bot).</p>\n<p>Now I want to test it without the bot emulator is it possible?\nAnd another question does somebody know how can I connect my bot with the WhatsApp using Twilio (I have also the service url for the bot(the azure service)\nYour help is much appreciated\nP.S: I am using the JS version for developing the bot</p>\n"
+      },
+      {
+        "tags": [
+          "outlook",
+          "botframework",
+          "adaptive-cards"
+        ],
+        "owner": {
+          "reputation": 547,
+          "user_id": 8963682,
+          "user_type": "registered",
+          "profile_image": "https://www.gravatar.com/avatar/b50bc21920b12a40bbd5d46f7b20817e?s=256&d=identicon&r=PG&f=y&so-version=2",
+          "display_name": "NoNam4",
+          "link": "https://stackoverflow.com/users/8963682/nonam4"
+        },
+        "is_answered": false,
+        "view_count": 26,
+        "answer_count": 1,
+        "score": 0,
+        "last_activity_date": 1724223923,
+        "creation_date": 1724169550,
+        "last_edit_date": 1724181953,
+        "question_id": 78893407,
+        "content_license": "CC BY-SA 4.0",
+        "link": "https://stackoverflow.com/questions/78893407/issues-with-action-execute-in-adaptive-card-for-outlook-not-hitting-endpoint",
+        "title": "Issues with Action.Execute in Adaptive Card for Outlook: Not Hitting Endpoint",
+        "body": "<p>I'm trying to create an interactive Adaptive Card that I can send as JSON to Outlook. My goal is for users to press buttons on the card that will trigger requests to my API. Ideally, I'd like to provide feedback directly on the card, such as changing the button text or disabling it after submission.</p>\n<p>I understand that I can use <code>Action.Http</code>, but I’m limited to version 1.1, which lacks some of the functionality I need. I've seen that <code>Action.Execute</code> is supposed to be a more advanced replacement for <code>Action.Http</code>, but I’m having trouble getting it to work.</p>\n<p><strong>The Issue:</strong></p>\n<ul>\n<li>Action.Execute Behavior: When I click the submit button on the card,\nnothing happens. Instead, I receive an error message saying, &quot;The\naction could not be completed.&quot;</li>\n<li>Provider Registration: I have registered the provider and included my\norganization's originator ID in the Adaptive Card. I’ve also set the\ntarget URL using a regex pattern like\n<code>https://.+\\.exampleapi\\.com/email_actions/.+</code>, but nothing seems to be\nhitting my endpoint.</li>\n<li>Fallback Attempt: I also tried using version 1.4 with Action.Execute\nand added a fallback to Action.Http, but that didn’t resolve the\nissue either.</li>\n</ul>\n<p><strong>What I’ve Observed:</strong></p>\n<ul>\n<li>Browser Network Request: When I click the button, I notice that Outlook makes an internal request to <a href=\"https://outlook.office.com/actionsb2netcore/userid/messages/...\" rel=\"nofollow noreferrer\">https://outlook.office.com/actionsb2netcore/userid/messages/...</a>, but this request doesn't seem to reach my specified endpoint. The request looks something like this:</li>\n</ul>\n<p>JSON:</p>\n<pre><code>{\n  &quot;type&quot;:&quot;invoke&quot;,\n  &quot;name&quot;:&quot;adaptiveCard/action&quot;,\n  &quot;localTimezone&quot;:&quot;&quot;,\n  &quot;localTimestamp&quot;:&quot;&quot;,\n  &quot;value&quot;:{\n    &quot;action&quot;:{\n      &quot;type&quot;:&quot;Action.Execute&quot;,\n      &quot;verb&quot;:&quot;feedbackSubmission&quot;,\n      &quot;data&quot;:{\n        &quot;feedback&quot;:&quot;some feedback&quot;\n      }\n    },\n    &quot;trigger&quot;:&quot;manual&quot;\n  },\n  &quot;from&quot;:{\n    &quot;id&quot;:&quot;user@example.com&quot;\n  },\n  &quot;channelData&quot;:{\n    &quot;connectorSenderGuid&quot;:&quot;some-guid&quot;,\n    &quot;adaptiveCardSignature&quot;:&quot;some-signature&quot;\n  }\n}\n</code></pre>\n<p><strong>Questions:</strong></p>\n<ol>\n<li><p>Scope of Submission: Do I need to submit my provider under the\n&quot;Testing&quot; scope for test users, or should I use the &quot;Organization&quot;\nscope? Could this be affecting why my actions aren't triggering any\nAPI requests?</p>\n</li>\n<li><p>Understanding the Request Flow: Can someone explain what happens\nwhen the button is clicked in the context of Outlook? It seems like\nthe action is being intercepted internally by Outlook but isn't\nreaching my backend.</p>\n</li>\n<li><p>Is there anything specific I should be doing to make Action.Execute\nwork properly in Outlook? Any insights would be greatly appreciated.</p>\n</li>\n<li><p>Do I Need an Azure Bot? Do Adaptive Cards in Outlook need to be processed by an\nAzure Bot to handle user interactions? My goal is to send an email\nwith an Adaptive Card to a user and process the user's actions on\nthe backend by sending some requests. I have a feeling this might\nrequire an Azure Bot, but I’m unsure how to trigger the bot to send\nthe Adaptive Card to the user, especially if the user didn't start a\nconversation or perform any other action first.</p>\n</li>\n</ol>\n"
+      }
+    ]
+
     const params = this.buildRequestParams(tagged, this.lastRun);
+    // return await testData;
     return await this.fetchStackOverflowIssues(params)
       .then(response => {
         this.logAndTrackResponse(response.data.items);
