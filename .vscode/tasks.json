@@ -2,13 +2,35 @@
 	"version": "2.0.0",
 	"tasks": [
     {
-      "label": "Build",
       "type": "npm",
-      "script": "build",
+      "script": "babel src --out-dir dist",
+      "label": "Build",
+      "detail": "Babel compile to dist",
       "group": {
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      "type": "npm",
+      "script": "start:prod",
+      "problemMatcher": [],
+      "label": "npm: start:prod",
+      "detail": "npm run build && dotenvx run -- node dist/index.js"
+    },
+    {
+      "type": "npm",
+      "script": "start:dev",
+      "problemMatcher": [],
+      "label": "npm: start:dev",
+      "detail": "Run src files"
+    },
+    {
+      "type": "npm",
+      "script": "start",
+      "problemMatcher": [],
+      "label": "npm: start",
+      "detail": "Run compiled dist ~files"
     }
   ]
 }

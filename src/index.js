@@ -31,8 +31,7 @@ try {
     queryDate.setDate(queryDate.getDate()-NUMBER_OF_DAYS_TO_BACK_QUERY);
     const timeOfDayToQueryFrom = Number(TIME_OF_DAY_TO_QUERY_FROM);
     queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
-    queryDate = new Date(queryDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-    console.log('QUERY DATE:', queryDate.toUTCString());
+    queryDate = new Date(queryDate.toUTCString());
   
     // Calling sleep is necessary to ensure parameters are set before calling the services.
     await sleep(1000);
