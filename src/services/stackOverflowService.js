@@ -72,7 +72,7 @@ class StackOverflowService extends DevOpsService {
    */
   async process() {
     try {
-      const existingIssuesDetails = [];
+      const possibleDevOpsMatches = [];
       const unassignedIssues = [];
 
       /**
@@ -160,7 +160,8 @@ class StackOverflowService extends DevOpsService {
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists:', existingIssuesResponse.data.workItems.length);
-          continue;
+          unassignedIssues.push(issue);
+          // continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
@@ -181,25 +182,27 @@ class StackOverflowService extends DevOpsService {
               // console.debug('No Matching Issues Exists:', existingIssuesResponse.data);
               // Do nothing and continue to next iteration.
             }
-            else if (getWorkItemByUrlResponse.status === 200 && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
+            // else if (getWorkItemByUrlResponse.status === 200 && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
+            else if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.fields && getWorkItemByUrlResponse.data.fields['Custom.IssueID']) {
               // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
-              existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
+              possibleDevOpsMatches.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
             }
           }
         }
       };
 
-      if (existingIssuesDetails === undefined || existingIssuesDetails.length === 0) {
+      if (possibleDevOpsMatches === undefined || possibleDevOpsMatches.length === 0) {
         console.log(chalk.red('No Matching Issues Exist\n'));
       }
       else {
-        console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+        console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
         
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
         for (const issue of issues) {
-          const exists = existingIssuesDetails.map(existingIssue => existingIssue['Custom.IssueID'] === issue['Custom.IssueID'] && existingIssue['System.Title'] === issue['System.Title']).includes(true);
-          if (!exists) {
-            unassignedIssues.push(issue);
+          const exists = possibleDevOpsMatches.map(existingIssue => existingIssue['Custom.IssueID'] === issue['Custom.IssueID'] && existingIssue['System.Title'] === issue['System.Title']).includes(true);
+          if (exists && unassignedIssues.length > 0) {
+            const index = unassignedIssues.findIndex(unassignedIssue => unassignedIssue['Custom.IssueID'] === issue['Custom.IssueID'] && unassignedIssue['System.Title'] === issue['System.Title']).status = 'New';
+            unassignedIssues.splice(index, 1);
           }
         }
       }
