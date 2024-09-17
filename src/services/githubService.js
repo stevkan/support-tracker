@@ -21,10 +21,16 @@ import { htmlToText } from 'html-to-text';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
+const {
+  USE_TEST_DATA
+} = process.env;
+
+const useTestData = USE_TEST_DATA === 'true' ? true : false;
+
 const htmlToTextOptions = {
   wordwrap: false,
   decodeEntities: true
-}
+};
 
 /**
  * Represents a service for interacting with GitHub repositories.
@@ -139,7 +145,7 @@ class GitHubService extends DevOpsService {
       console.table(issues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
 
-      console.groupCollapsed(chalk.blue('Possible Matching DevOps Issues:'));
+      console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
       
       // Iterates over the GitHub issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
@@ -213,7 +219,7 @@ class GitHubService extends DevOpsService {
       }
       console.groupEnd();
       
-      console.group(chalk.blue('DevOps Results'));
+      console.group(chalk.rgb(19, 60, 124)('DevOps Results'));
       console.log('Issues New to DevOps:', unassignedIssues.length);
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
@@ -310,10 +316,10 @@ class GitHubService extends DevOpsService {
     const config = this.getGitHubConfig();
 
     if (labels) {
-      // return testData;
+      if (!!useTestData) return await emptyData;
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config);
     } else {
-      // return testData
+      if (!!useTestData) return await testData;
       return this.getIssuesWithoutLabels(org, repo, ignoreLabels, config);
     }
   }

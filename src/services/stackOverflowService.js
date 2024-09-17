@@ -29,11 +29,16 @@ import { htmlToText } from 'html-to-text';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, removeDuplicates, sleep } from '../utils.js';
 
+const {
+  USE_TEST_DATA
+} = process.env;
+
+const useTestData = USE_TEST_DATA === 'true' ? true : false;
+
 const htmlToTextOptions = {
   wordwrap: false,
   decodeEntities: true
 }
-
 /**
  * StackOverflowService class for fetching and processing Stack Overflow issues.
  * @class
@@ -74,6 +79,7 @@ class StackOverflowService extends DevOpsService {
     try {
       const possibleDevOpsMatches = [];
       const unassignedIssues = [];
+      let stackOverflowIndicator = chalk.rgb(244, 128, 36)('Stack Overflow Results:');
 
       /**
        * Fetches questions from Stack Overflow for the provided tags and returns the results as a single array.
@@ -84,8 +90,10 @@ class StackOverflowService extends DevOpsService {
        *
        * @returns {Promise<Object[]>} - An array of question objects fetched from Stack Overflow.
        */
-
       const queue = this.tags.map(tag => async () => await this.getIssues(tag));
+      if (this.tags.includes('bot-framework')) {
+        stackOverflowIndicator = chalk.rgb(255, 176, 37)('Internal Stack Overflow Results:');
+      }
       const items = [];
       for (const task of queue) {
         const result = await task();
@@ -132,7 +140,7 @@ class StackOverflowService extends DevOpsService {
         "Custom.IssueURL": `<a href="${this.getUrl(question_id)}"> ${this.getUrl(question_id)} </a>`
       }));
 
-      console.group(chalk.blue('Stack Overflow Results:'));
+      console.group(chalk.blue(stackOverflowIndicator));
       console.log('Posts Found:', issues.length);
       // for (const issue of issues) {
       //   console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
@@ -140,7 +148,7 @@ class StackOverflowService extends DevOpsService {
       console.table(issues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
 
-      console.groupCollapsed(chalk.blue('Possible Matching DevOps Issues:'));
+      console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
 
       // Iterates over the Stack Overflow issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
@@ -217,7 +225,7 @@ class StackOverflowService extends DevOpsService {
       }
       console.groupEnd();
       
-      console.group(chalk.blue('DevOps Results:'));
+      console.group(chalk.rgb(19, 60, 124)('DevOps Results:'));
       console.log('Posts New to DevOps: ', unassignedIssues.length);
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
@@ -365,7 +373,8 @@ class StackOverflowService extends DevOpsService {
     ]
 
     const params = this.buildRequestParams(tagged, this.lastRun);
-    // return await testData;
+
+    if (!!useTestData) return await testData;
     return await this.fetchStackOverflowIssues(params)
       .then(response => {
         this.logAndTrackResponse(response.data.items);

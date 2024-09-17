@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 import { sleep } from '../utils.js';
 
+const {
+  USE_TEST_DATA
+} = process.env;
+
+const useTestData = USE_TEST_DATA === 'true' ? true : false;
+
 /**
  * Provides an implementation of the StackOverflowService that interacts with the internal Microsoft Stack Overflow Enterprise API.
  *
@@ -66,8 +72,9 @@ class InternalStackOverflowService extends StackOverflowService {
     const params = this.buildRequestParams(tagged, this.lastRun);
     const headers = {
       'X-API-Key': process.env.STACK_OVERFLOW_ENTERPRISE_KEY
-    }
-    // return testDataInternal;
+    };
+
+    if (!!useTestData) return await testDataInternal;
     return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.2/questions', headers })
       .then(response => {
         this.logAndTrackResponse(response.data.items);

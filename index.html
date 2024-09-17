@@ -1,120 +1,72 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index of D:\work\support-tracker</title>
+    <title>Support Tracker</title>
     <style>
         body {
-          background-color: #ECE9E9;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          # justify-content: space-evenly;
-          # width: 50%;
-          padding: 80px 100px;
-          margin: auto;
-          font-family: Helvetica Neue, Lucida Grande, Arial;
-          -webkit-font-smoothing: antialiased;
-        }
-        * {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            outline: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        h1 {
-          margin-bottom: 15px;
-          font-size: 18px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: initial;
-          width: -webkit-fill-available;
+        .header {
+            text-align: center;
+            width: 100%;
+            padding: 20px 0;
+            background-color: #f0f0f0;
         }
-        .container {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: space-between;
-          margin: 5px 0 0 10px;
+        #headerTitle {
+            font-size: 24px;
+            font-weight: bold;
         }
-        .item {
-          display: inline-flex;
-          width: 30%;
-          line-height: 20px;
-          white-space: nowrap;
+        #headerDate {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
         }
-        .icon {
-          height: 25px;
+        .main {
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
         }
-        .icon .name {
-          text-indent: 28px;
-          width: max-content;
-          display: inline-block;
-          font-size: 13px;
-          color: rgb(85, 85, 85);
-        }
-        span.size, span.date {
-          display: none;
-        }
-        .icon-css .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHtSURBVDjLjZM9T9tQFIYpQ5eOMBKlW6eWIQipa8RfQKQghEAKqZgKFQgmFn5AWyVDCipVQZC2EqBWlEqdO2RCpAssQBRsx1+1ndix8wFvfW6wcUhQsfTI0j33PD7n+N4uAF2E+/S5RFwG/8Njl24/LyCIOI6j1+v1y0ajgU64cSSTybdBSVAwSMmmacKyLB/DMKBpGkRRZBJBEJBKpXyJl/yABLTBtm1Uq1X2JsrlMnRdhyRJTFCpVEAfSafTTUlQoFs1luxBAkoolUqQZbmtJTYTT/AoHInOfpcwtVtkwcSBgrkDGYph+60oisIq4Xm+VfB0+U/P0Lvj3NwPGfHPTcHMvoyFXwpe7UmQtAqTUCU0D1VVbwTPVk5jY19Fe3ZfQny7CE51WJDXqpjeEUHr45ki9rIqa4dmQiJfMLItGEs/FcQ2ucbRmdnSYy5vYWyLx/w3EaMfLmBaDpMQvuDJ65PY8Dpnz3wpYmLtApzcrIAqmfrEgdZH1grY/a36w6Xz0DKD8ES25/niYS6+wWE8mWfByY8cXmYEJFYLkHUHtVqNQcltAvoLD3v7o/FUHsNvzlnwxfsCEukC/ho3yUHaBN5Buo17Ojtyl+DqrnvQgUtfcC0ZcAdkUeA+ye7eMru9AUGIJPe4zh509UP/AAfNypi8oj/mAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-directory .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAABGdBTUEAALGPC/xhBQAAAWtQTFRFAAAA/PPQ9Nhc2q402qQ12qs2/PTX2pg12p81+/LM89NE9dto2q82+/fp2rM22qY39d6U+/bo2qo2/frx/vz32q812qs12qE279SU8c4w9NZP+/LK//367s9y7s925cp0/vzw9t92//342po2/vz25s1579B6+OSO2bQ0/v799NyT8tE79dld8Msm+OrC/vzx79KA2IYs7s6I9d6R4cJe9+OF/PLI/fry79OF/v30//328tWB89RJ8c9p8c0u9eCf//7+9txs6sts5Mdr+++5+u2z/vrv+/fq6cFz8dBs8tA57cpq+OaU9uGs27Y8//799NdX/PbY9uB89unJ//z14sNf+emh+emk+vDc+uys9+OL8dJy89NH+eic8tN5+OaV+OWR9N2n9dtl9t529+KF9+GB9Nue9NdU8tR/9t5y89qW9dpj89iO89eG/vvu2pQ12Y4z/vzy2Ict/vvv48dr/vzz4sNg///+2Igty3PqwQAAAAF0Uk5TAEDm2GYAAACtSURBVBjTY2AgA2iYlJWVhfohBPg0yx38y92dS0pKVOVBAqIi6sb2vsWWpfrFeTI8QAEhYQEta28nCwM1OVleZqCAmKCEkUdwYWmhQnFeOStQgL9cySqkNNDHVJGbiY0FKCCuYuYSGRsV5KgjxcXIARRQNncNj09JTgqw0ZbkZAcK5LuFJaRmZqfHeNnpSucDBQoiEtOycnIz4qI9bfUKQA6pKKqAgqIKQyK8BgAZ5yfODmnHrQAAAABJRU5ErkJggg==');
-          background-repeat: no-repeat;
-        }
-        .icon-db .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHVSURBVDjLjZPLaiJBFIZNHmJWCeQdMuT1Mi/gYlARBRUkao+abHUhmhgU0QHtARVxJ0bxhvfGa07Of5Iu21yYFPyLrqrz1f+f6rIRkQ3icca6ZF39RxesU1VnAVyuVqvJdrvd73Y7+ky8Tk6n87cVYgVcoXixWNByuVSaTqc0Ho+p1+sJpNvtksvlUhCb3W7/cf/w+BSLxfapVIqSySRlMhnSdZ2GwyHN53OaTCbU7/cFYBgG4RCPx/MKub27+1ur1Xqj0YjW6zWxCyloNBqUSCSkYDab0WAw+BBJeqLFtQpvGoFqAlAEaZomuc0ocAQnnU7nALiJ3uh8whgnttttarVaVCgUpCAUCgnQhMAJ+gG3CsDZa7xh1mw2ZbFSqYgwgsGgbDQhcIWeAHSIoP1pcGeNarUqgFKpJMLw+/0q72azkYhmPAWIRmM6AGbXc7kc5fN5AXi9XgWACwAguLEAojrfsVGv1yV/sVikcrksAIfDIYUQHEAoPgLwT3GdzWYNdBfXh3xwApDP5zsqtkoBwuHwaSAQ+OV2u//F43GKRCLEc5ROpwVoOngvBXj7jU/wwZPPX72DT7RXgDfIT27QEgvfKea9c3m9FsA5IN94zqbw9M9fAEuW+zzj8uLvAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-exe .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAE8SURBVDjLpVM9SwNREJzTpx4JaGMn/oJrRMtU/g2xsLD1F/gDbK0lpaAgNmJnI1YWasBOELs0QgQDfsQ4Mxb3vEvgipwuLAsLszszb19iG/+JsHf6dDU3g9WXdzdtABIsAQZowjJkwSRkwyQoYX52+PYx8F0w0FrPFqfuuwP0P1W5ZW2hi9vXpViXsXOyieOtw+b1zUMr2T16tGnYBizYhqR8a2QjquxRkAjJsIhgGhsrg4q9CYDpmGWMerZ//oxgC1mW/clAnl0gIE6UqvXbLlIqJTYaDeibCBRrAX97ACAKwXIt4KgHEhEUGdQBlgOE4Khd0sTAMQZkzoDkxMBiAI1g5gzSNK39jJYQJKHT6SBN00KGpDFGVfJ6vR5kIyQetg8uh9tiH+IIMNb8hPOzNV2cuATAX+3kv9/5B7T5iPkmloFJAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-generic .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAC4SURBVCjPdZFbDsIgEEWnrsMm7oGGfZrohxvU+Iq1TyjU60Bf1pac4Yc5YS4ZAtGWBMk/drQBOVwJlZrWYkLhsB8UV9K0BUrPGy9cWbng2CtEEUmLGppPjRwpbixUKHBiZRS0p+ZGhvs4irNEvWD8heHpbsyDXznPhYFOyTjJc13olIqzZCHBouE0FRMUjA+s1gTjaRgVFpqRwC8mfoXPPEVPS7LbRaJL2y7bOifRCTEli3U7BMWgLzKlW/CuebZPAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-html .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHtSURBVDjLjZM9T9tQFIYpQ5eOMBKlW6eWIQipa8RfQKQghEAKqZgKFQgmFn5AWyVDCipVQZC2EqBWlEqdO2RCpAssQBRsx1+1ndix8wFvfW6wcUhQsfTI0j33PD7n+N4uAF2E+/S5RFwG/8Njl24/LyCIOI6j1+v1y0ajgU64cSSTybdBSVAwSMmmacKyLB/DMKBpGkRRZBJBEJBKpXyJl/yABLTBtm1Uq1X2JsrlMnRdhyRJTFCpVEAfSafTTUlQoFs1luxBAkoolUqQZbmtJTYTT/AoHInOfpcwtVtkwcSBgrkDGYph+60oisIq4Xm+VfB0+U/P0Lvj3NwPGfHPTcHMvoyFXwpe7UmQtAqTUCU0D1VVbwTPVk5jY19Fe3ZfQny7CE51WJDXqpjeEUHr45ki9rIqa4dmQiJfMLItGEs/FcQ2ucbRmdnSYy5vYWyLx/w3EaMfLmBaDpMQvuDJ65PY8Dpnz3wpYmLtApzcrIAqmfrEgdZH1grY/a36w6Xz0DKD8ES25/niYS6+wWE8mWfByY8cXmYEJFYLkHUHtVqNQcltAvoLD3v7o/FUHsNvzlnwxfsCEukC/ho3yUHaBN5Buo17Ojtyl+DqrnvQgUtfcC0ZcAdkUeA+ye7eMru9AUGIJPe4zh509UP/AAfNypi8oj/mAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-img .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGWSURBVBgZpcE/a1NhGMbh3/OeN56cKq2Dp6AoCOKmk4uCn8DNycEOIojilr2TaBfRzVnESQR3Bz+FFDoWA2IjtkRqmpyc97k9qYl/IQV7XSaJw4g0VlZfP0m13dwepPbuiH85fyhyWCx4/ubxjU6kkdxWHt69VC6XpZlFBAhwJgwJJHAmRKorbj94ewvoRBrbuykvT5R2/+lLTp05Tp45STmEJYJBMAjByILxYeM9jzr3GCczGpHGYAQhRM6fO8uFy1fJQoaUwCKYEcwwC4QQaGUBd36KTDmQ523axTGQmEcIEBORKQfG1ZDxcA/MkBxXwj1ggCQyS9TVAMmZiUxJ8Ln/kS+9PmOvcSW+jrao0mmMH5bzHfa+9UGBmciUBJ+2Fmh1h+yTQCXSkJkdCrpd8btIwwEJQnaEkOXMk7XaiF8CUxL/JdKQOwb0Ntc5SG9zHXQNd/ZFGsaEeLa2ChjzXQcqZiKNxSL0vR4unVwwMENMCATib0ZdV+QtE41I42geXt1Ze3dlMNZFdw6Ut6CIvKBhkjiM79Pyq1YUmtkKAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-js .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHdSURBVDjLjZNPaxNBGIdrLwURLznWgkcvIrQhRw9FGgy01IY0TVsQ0q6GFkT0kwjJId9AP4AHP4Q9FO2hJ7El2+yf7OzMbja7Sf0578QdNybFLjwszLu/Z2femZkDMEfI54FkRVL4Dw8l8zqXEawMBgM2HA6vR6MRZiHraDabH7KSrKBA4SAIEIahxvd9eJ6HbrerJKZpotVqaUkavkMC+iCKIsRxrN6EEAKMMViWpQT9fh/0k3a7PZZkBUPmqXAKCSjAOYdt21NLUj1JBYW7C6vi6BC8vKWKQXUXQcNA5Nh6KY7jqJl0Op1JwY/Hi7mLp/lT/uoA/OX2WLC3C9FoQBwfILKulIRmQv1wXfevwHmyuMPXS5Fv1MHrFSTmhSomnUvw/Spo3C+vg3/+pJZDPSGRFvilNV+8PUZvoziKvn+d3LZvJ/BelMDevIZXK2EQCiUhtMDM53bY5rOIGXtwjU3EVz/HM5Az8eplqPFKEfzLR91cOg8TPTgr3MudFx+d9owK7KMNVfQOtyQ1OO9qiHsWkiRRUHhKQLuwfH9+1XpfhVVfU0V3//k4zFwdzjIlSA/Sv8jTOZObBL9uugczuNaCP5K8bFBIhduE5bdC3d6MYIkkt7jOKXT1l34DkIu9e0agZjoAAAAASUVORK5CYII=');
-          background-repeat: no-repeat;
-        }
-        .icon-json .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHtSURBVDjLjZM9T9tQFIYpQ5eOMBKlW6eWIQipa8RfQKQghEAKqZgKFQgmFn5AWyVDCipVQZC2EqBWlEqdO2RCpAssQBRsx1+1ndix8wFvfW6wcUhQsfTI0j33PD7n+N4uAF2E+/S5RFwG/8Njl24/LyCIOI6j1+v1y0ajgU64cSSTybdBSVAwSMmmacKyLB/DMKBpGkRRZBJBEJBKpXyJl/yABLTBtm1Uq1X2JsrlMnRdhyRJTFCpVEAfSafTTUlQoFs1luxBAkoolUqQZbmtJTYTT/AoHInOfpcwtVtkwcSBgrkDGYph+60oisIq4Xm+VfB0+U/P0Lvj3NwPGfHPTcHMvoyFXwpe7UmQtAqTUCU0D1VVbwTPVk5jY19Fe3ZfQny7CE51WJDXqpjeEUHr45ki9rIqa4dmQiJfMLItGEs/FcQ2ucbRmdnSYy5vYWyLx/w3EaMfLmBaDpMQvuDJ65PY8Dpnz3wpYmLtApzcrIAqmfrEgdZH1grY/a36w6Xz0DKD8ES25/niYS6+wWE8mWfByY8cXmYEJFYLkHUHtVqNQcltAvoLD3v7o/FUHsNvzlnwxfsCEukC/ho3yUHaBN5Buo17Ojtyl+DqrnvQgUtfcC0ZcAdkUeA+ye7eMru9AUGIJPe4zh509UP/AAfNypi8oj/mAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
-        }
-        .icon-ps .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAACXBIWXMAABCcAAAQnAEmzTo0AAAEr0lEQVRIie1WXWwUVRQ+M53t/nS7Xdpdtm6XFtwSUFoo0JaqUVRSMa3EGB6a1AeJRvTBmBqCqASNBhTkwcQQQN+MGF/UgCUBjBCxwYCiRG0EISyglLa03W7ptp3t3HOOD/fu7HSoz7xwc3Izc+fm++Z+5zv3XoC77U437fYhnz9QmaiZ9RPz7UMwyxgDMw9eT1lWzo0Sroi2tG8YSk/IicykgoiJmJGJiJAJmZAIGVG+EgrZEyKTYMKqRPXZk98aLoLa+qa+gdE8OjvQkZmYkNCBTgqOEIkEoyDFIRiFZVkAoLsISsKVjlXSYw807N3xWtOyRQqdkNmBnmcqPEh0EkRCTJtuAl3XfaFoXhtipk0bO1a3NOzbuXnl0kWcV0ZysNJHsFqEYFJBKHRdz01mAaDISRCrqg7GFpqmyUSSxFvsebCx3mMYrQ83n/r598Gbw7ZKzkyoEVTBiLF4df+1C9a0OYOgtq7RpABLeZiA6Lc/L/iKPSuWLvZ6i1tXrzrRc2Y4PcpOTUillFCQvQISkblVfVf+cq8gWd9iYhE4bEOMP/3yR7Q8XLc4GfD71jyy6ujxnszYWCHbKGmEelYhwuGKof5r7hz4Q3MVNBOztA0Rird37e3+7iQAxCujB/btjFbMKZiSBKNgFDK9JJPBhMJSebXRS8vCqHkUuvz9vMpCWJu27T7+42kAWFCTOPDJ7rJQkOw6wIKRGAWTKAtH0jf7JGxBouR9y3JaEFEo1xOq4iJkQhTWsRM9TcvrEvHKaKS8ZWXDwe6judwUkWsRSCji82qvp3qZeeYKKu6xLCuvDxGTo6CQECcnJl5/Z5dlCQBoXLG0s7NTGkalIa8PoWBmInJL5A9F8rojk7NclVaPPtT89Wd7PB4DAKZy1rnelDSMwrU5SHAeHQDUVmF4ig1fiGmcFSI5C8pTpG/uenHjcx26rgPAxasDr7yx82zPEdszcm+Q4S32m5PjboKqmmQ6PeoU3RZnfnX84w+2LqtbLCv8i0M9297dkRlMKVBSPeWNFKu698Y/f7sJymPVkxPZGaITMdH6da3vvflqsCQAAOmxiS07Pj341ecil1XFdbs4TMU+/3Ruyk3gD1Vkx0zmgjXLSgPvb+1qf2K1nPDDmfNdb23/99K5vGHQ/mU7nNLPINA0zRucw6N99p7c2LDko+1bEvEYAJjT1of7v9m/b48wM0+tXRMs8cuDQeZpeGjo8OFuWXcAUFRkoBBukkisqrnthWTzugWNbfNXrF2/ocuyLHkaXLw68OSzm6MLllfMu//5l7t4ttb2dIcNVZmoLQ1HnOA6AFRWJ9Mjw3Zuy0IlhmEw85fdp9o7Xvr11DHCHJG4nEqN3coW9hskRBrJZPtHsoViCkfGM8NOAg0Amh5/ZuTWtH1CAWPb2tZxE058fwSnJ2wXEgrDG9ANnzwDZC9EbnL0BrBSf2Fdy6Xe0+4ceEvClOl3+Ecc6j5sO4/zJxSRMLNpQkFo2b3zHqBps9wTDADQNdA0YGCNmYGBWQNmZgDWQI04Q1MBuqbbdw9N05JLmvuunHcRaADgLymN19QWrh+umwg7fnK2S4o9a/D6ZXMq+z/f77Y71/4DTdIwppBX5BQAAAAASUVORK5CYII=');
-          background-repeat: no-repeat;
-        }
-        .icon-text .name {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADoSURBVBgZBcExblNBGAbA2ceegTRBuIKOgiihSZNTcC5LUHAihNJR0kGKCDcYJY6D3/77MdOinTvzAgCw8ysThIvn/VojIyMjIyPP+bS1sUQIV2s95pBDDvmbP/mdkft83tpYguZq5Jh/OeaYh+yzy8hTHvNlaxNNczm+la9OTlar1UdA/+C2A4trRCnD3jS8BB1obq2Gk6GU6QbQAS4BUaYSQAf4bhhKKTFdAzrAOwAxEUAH+KEM01SY3gM6wBsEAQB0gJ+maZoC3gI6iPYaAIBJsiRmHU0AALOeFC3aK2cWAACUXe7+AwO0lc9eTHYTAAAAAElFTkSuQmCC');
-          background-repeat: no-repeat;
+        .service {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Index of D:\work\support-tracker</h1>
-    <div class="container"><div class='item'><a href='./.vscode/' class='icon icon-directory' title='.vscode'><span class='name'>.vscode</span><span class='size'>1</span><span class='date'>08/15/2024 18:41:11</span></a></div>
-<div class='item'><a href='./dist/' class='icon icon-directory' title='dist'><span class='name'>dist</span><span class='size'>1</span><span class='date'>08/20/2024 13:06:56</span></a></div>
-<div class='item'><a href='./node_modules/' class='icon icon-directory' title='node_modules'><span class='name'>node_modules</span><span class='size'>1</span><span class='date'>08/20/2024 17:00:58</span></a></div>
-<div class='item'><a href='./src/' class='icon icon-directory' title='src'><span class='name'>src</span><span class='size'>1</span><span class='date'>08/26/2024 09:13:19</span></a></div>
-<div class='item'><a href='./.env/' class='icon icon icon-text' title='.env'><span class='name'>.env</span><span class='size'>925</span><span class='date'>08/26/2024 11:38:36</span></a></div>
-<div class='item'><a href='./.env-template/' class='icon icon icon-text' title='.env-template'><span class='name'>.env-template</span><span class='size'>655</span><span class='date'>08/15/2024 18:41:11</span></a></div>
-<div class='item'><a href='./.gitignore' class='icon icon icon-generic' title='.gitignore'><span class='name'>.gitignore</span><span class='size'>1514</span><span class='date'>08/15/2024 18:41:11</span></a></div>
-<div class='item'><a href='./babel.config.json/' class='icon icon icon-json' title='babel.config.json'><span class='name'>babel.config.json</span><span class='size'>39</span><span class='date'>08/26/2024 09:13:19</span></a></div>
-<div class='item'><a href='./index.html/' class='icon icon icon-html' title='index.html'><span class='name'>index.html</span><span class='size'>14366</span><span class='date'>08/27/2024 11:11:42</span></a></div>
-<div class='item'><a href='./package-lock.json/' class='icon icon icon-json' title='package-lock.json'><span class='name'>package-lock.json</span><span class='size'>407928</span><span class='date'>08/26/2024 09:13:19</span></a></div>
-<div class='item'><a href='./package.json/' class='icon icon icon-json' title='package.json'><span class='name'>package.json</span><span class='size'>727</span><span class='date'>08/26/2024 09:13:19</span></a></div>
-<div class='item'><a href='./README.md/' class='icon icon icon-text' title='README.md'><span class='name'>README.md</span><span class='size'>1456</span><span class='date'>08/15/2024 18:41:11</span></a></div>
+    <div class="header">
+        <div id="headerTitle">Support Tracker</div>
+        <div id="headerDate"></div>
     </div>
+    <div class="main">
+        <div class="service processTime" id="processStart">9/17/2024, 1:12:29 PM</div>
+        <div class="service" id="stackOverflowService"></div>
+        <div class="service" id="internalStackOverflowService"></div>
+        <div class="service" id="gitHubService"></div>
+        <div class="service processTime" id="processEnd">9/17/2024, 1:12:47 PM</div>
+    </div>
+
+    <script>
+        function updateDate() {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const today = new Date().toLocaleDateString('en-US', options);
+            document.getElementById('headerDate').textContent = today;
+        }
+        updateDate();
+        setInterval(updateDate, 86400000); // Update date every 24 hours
+    </script>
 </body>
 </html>
+    
