@@ -5,6 +5,7 @@ import { TelemetryClient } from './telemetryClient.js';
 import { sleep } from './utils.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
+import { generateIndexHtml, readIndexHtml } from './createIndex.js';
 
 dotenv.config(process.env);
 
@@ -15,9 +16,12 @@ dotenv.config(process.env);
  * @property {number} TIME_OF_DAY_TO_QUERY_FROM - The time of day to start querying data.
  */
 const {
+  USE_TEST_DATA,
   NUMBER_OF_DAYS_TO_BACK_QUERY,
   TIME_OF_DAY_TO_QUERY_FROM
 } = process.env;
+
+const useTestData = USE_TEST_DATA === 'true' ? true : false;
 
 // Initialize the telemetry client.
 const telemetryClient = new TelemetryClient();
@@ -27,6 +31,8 @@ const devOpsService = new DevOpsService(telemetryClient);
 
 try {
   (async () => {
+    if (!!useTestData) console.error(chalk.redBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
+
     let queryDate = new Date();
     queryDate.setDate(queryDate.getDate()-NUMBER_OF_DAYS_TO_BACK_QUERY);
     const timeOfDayToQueryFrom = Number(TIME_OF_DAY_TO_QUERY_FROM);
@@ -56,7 +62,8 @@ try {
   
     const startTime = new Date();
     startTime.setDate(startTime.getDate());
-    console.info(chalk.green.bold(`Starting Processes: ${ startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) }`));
+    const localStartTime = startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+    console.info(chalk.green.bold(`Starting Processes: ${ localStartTime }`));
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
   
     /**
@@ -64,30 +71,35 @@ try {
      * 
      * This code is part of the main application logic that orchestrates the data retrieval and processing from various services.
      */
-    console.group(chalk.blue.bold('\nProcessing StackOverflow...'))
+    console.group(chalk.rgb(244, 128, 36).bold('\nProcessing StackOverflow...'))
     await stackOverflowService.process()
       .then(res => {
         if (res.status === 204 || res.status === 200) {
-          if (!!res.message) console.warn(chalk.red.italic('Process status:', res.message));
+          if (!!res.message) console.warn(chalk.green.italic('Process status:'), chalk.red.italic(res.message));
         }
       });
-  
-    console.group(chalk.blue.bold('\nProcessing Internal StackOverflow...'))
+
+    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    
+    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
     await internalStackOverflowService.process()
-      .then(res => {
-        if (res.status === 204 || res.status === 200) {
-          if (!!res.message) console.warn(chalk.red.italic('Process status:', res.message));
-        }
-      });
+    .then(res => {
+      if (res.status === 204 || res.status === 200) {
+        if (!!res.message) console.warn(chalk.green.italic('Process status:'), chalk.red.italic(res.message));
+      }
+    });
+
+    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
   
     console.group(chalk.blue.bold('\nProcessing GitHub...'))
     await gitHubService.process()
-      .then(res => {
+      .then(async res => {
         if (res.status === 204 || res.status === 200) {
-          if (!!res.message) console.warn(chalk.red.italic('Process status:', res.message));
+          if (!!res.message) console.warn(chalk.green.italic('Process status:'), chalk.red.italic(res.message));
           const endTime = new Date();
           endTime.setDate(endTime.getDate());
-          console.info(chalk.green.bold(`\nFinished Processes: ${ endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) }`));
+          const localEndTime = endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+          console.info(chalk.green.bold(`\nFinished Processes: ${ localEndTime }`));
           telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
   
           telemetryClient.flushClient();
