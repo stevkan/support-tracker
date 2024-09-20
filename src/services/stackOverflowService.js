@@ -26,6 +26,7 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
+import { jsonStore } from '../jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, removeDuplicates, sleep } from '../utils.js';
 
@@ -146,6 +147,17 @@ class StackOverflowService extends DevOpsService {
       //   console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
+
+      if (this.tags.includes('bot-framework')) {
+        jsonStore.db.data.index.internalStackOverflow.found.issues = issues;
+        jsonStore.db.data.index.internalStackOverflow.found.count = issues.length;
+      }
+      else {
+        jsonStore.db.data.index.stackOverflow.found.issues = issues;
+        jsonStore.db.data.index.stackOverflow.found.count = issues.length;
+      }
+      await jsonStore.db.write();
+
       console.groupEnd();
 
       console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
@@ -204,6 +216,15 @@ class StackOverflowService extends DevOpsService {
       }
       else {
         console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
+
+        if (this.tags.includes('bot-framework')) {
+          jsonStore.db.data.index.internalStackOverflow.devOps = possibleDevOpsMatches;
+        }
+        else {
+          jsonStore.db.data.index.stackOverflow.devOps = possibleDevOpsMatches;
+        }
+        await jsonStore.db.write();
+
         
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
         for (const issue of issues) {
@@ -214,7 +235,17 @@ class StackOverflowService extends DevOpsService {
           }
         }
       }
-      
+
+      // if (this.tags.includes('bot-framework')) {
+      //   jsonStore.db.data.index.internalStackOverflow.newIssues.issues = issues;
+      //   jsonStore.db.data.index.internalStackOverflow.newIssues.count = issues.length;
+      // }
+      // else {
+      //   jsonStore.db.data.index.stackOverflow.newIssues.issues = issues;
+      //   jsonStore.db.data.index.stackOverflow.newIssues.count = issues.length;
+      // }
+      // await jsonStore.db.write();
+
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
@@ -230,6 +261,16 @@ class StackOverflowService extends DevOpsService {
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
+
+      if (this.tags.includes('bot-framework')) {
+        jsonStore.db.data.index.internalStackOverflow.newIssues.issues = unassignedIssues;
+        jsonStore.db.data.index.internalStackOverflow.newIssues.count = unassignedIssues.length;
+      }
+      else {
+        jsonStore.db.data.index.stackOverflow.newIssues.issues = unassignedIssues;
+        jsonStore.db.data.index.stackOverflow.newIssues.count = unassignedIssues.length;
+      }
+      await jsonStore.db.write();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {

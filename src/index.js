@@ -3,9 +3,10 @@ import chalk from 'chalk';
 
 import { TelemetryClient } from './telemetryClient.js';
 import { sleep } from './utils.js';
+import { jsonStore } from './jsonStore.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
-import { generateIndexHtml, readIndexHtml } from './createIndex.js';
+import { generateIndexHtml } from './createIndex.js';
 
 dotenv.config(process.env);
 
@@ -65,6 +66,9 @@ try {
     const localStartTime = startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
     console.info(chalk.green.bold(`Starting Processes: ${ localStartTime }`));
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
+
+    jsonStore.db.data.index.startTime = localStartTime;
+    await jsonStore.db.write();
   
     /**
      * Processes the data from the StackOverflow and GitHub services.
@@ -101,9 +105,15 @@ try {
           const localEndTime = endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
           console.info(chalk.green.bold(`\nFinished Processes: ${ localEndTime }`));
           telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
-  
-          telemetryClient.flushClient();
-          process.exit();
+
+          jsonStore.db.data.index.endTime = localEndTime;
+          await jsonStore.db.write();
+          await generateIndexHtml(jsonStore.db.data);
+
+          sleep(1500).then(() => {
+            telemetryClient.flushClient();
+            process.exit();
+          });
         }
       });
   })();
