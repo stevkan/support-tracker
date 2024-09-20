@@ -74,7 +74,7 @@ class InternalStackOverflowService extends StackOverflowService {
       'X-API-Key': process.env.STACK_OVERFLOW_ENTERPRISE_KEY
     };
 
-    if (!!useTestData) return await testDataInternal;
+    if (!!useTestData) return await emptyData;
     return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.2/questions', headers })
       .then(response => {
         this.logAndTrackResponse(response.data.items);

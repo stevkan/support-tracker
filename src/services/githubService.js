@@ -18,6 +18,7 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
+import { jsonStore } from '../jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
@@ -143,6 +144,11 @@ class GitHubService extends DevOpsService {
       //   console.debug('New Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
+
+      jsonStore.db.data.index.github.found.issues = issues;
+      jsonStore.db.data.index.github.found.count = issues.length;
+      await jsonStore.db.write();
+
       console.groupEnd();
 
       console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
@@ -199,6 +205,9 @@ class GitHubService extends DevOpsService {
       }
       else {
         console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+
+        jsonStore.db.data.index.github.devOps = existingIssuesDetails;
+        await jsonStore.db.write();
   
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
         for (const issue of issues) {
@@ -208,6 +217,10 @@ class GitHubService extends DevOpsService {
           }
         }
       }
+
+      // jsonStore.db.data.index.github.newIssues.issues = issues;
+      // jsonStore.db.data.index.github.newIssues.count = issues.length;
+      // await jsonStore.db.write();
 
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
@@ -224,6 +237,10 @@ class GitHubService extends DevOpsService {
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
+
+      jsonStore.db.data.index.github.newIssues.issues = unassignedIssues;
+      jsonStore.db.data.index.github.newIssues.count = unassignedIssues.length;
+      await jsonStore.db.write();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
