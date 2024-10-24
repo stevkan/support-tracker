@@ -252,8 +252,7 @@ class DevOpsService extends ErrorHandler {
         return response;
       })
       .catch(error => {
-        this.errorHandler(error, 'DevOpsService');
-        throw error;
+        return this.errorHandler(error, 'DevOpsService');
       });
   }
 

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import chalk from 'chalk';
 
+import { jsonStore } from './store/jsonStore.js';
+
 /**
  * Represents an error handler.
  * @class
@@ -17,16 +19,27 @@ class ErrorHandler {
  * @param { string } serviceName - The name of the service where the error occurred.
  * @param { object } telemetry - An object with a `trackException` method to send telemetry data.
  */
-  errorHandler(error, serviceName) {
+  async errorHandler(error, serviceName) {
+    const { status, message, stack } = error;
     if (error instanceof axios.AxiosError) {
-      console.error(chalk.red(`API request failed in ${ serviceName }:  ${ error.stack }`));
+      console.error(chalk.red(`API error in ${ serviceName }: ${ stack }`));
+      error.name = serviceName;
     } else if (error instanceof TypeError) {
-      console.error(chalk.red(`Type error in ${ serviceName }:  ${ error.stack }`));
+      console.error(chalk.red(`Type error in ${ serviceName }: ${ stack }`));
+      error.name = serviceName;
     } else if (error instanceof ReferenceError) {
-      console.error(chalk.red(`Reference error in ${ serviceName }:  ${ error.stack }`));
+      console.error(chalk.red(`Reference error in ${ serviceName }: ${ stack }`));
+      error.name = serviceName;
+    } else if (error instanceof Error && serviceName) {
+      console.error(chalk.red(`Unexpected error in ${ serviceName }: ${ stack }`));
+      error.name = serviceName;
     } else {
-      console.error(chalk.red(`Unexpected error in ${ serviceName }:  ${ error.stack }`));
+      console.error(chalk.red(`Unexpected error: ${ stack }`));
+      error.name = 'Unknown';
     }
+    
+    jsonStore.loggingDb.data.logs.push({ stack });
+    await jsonStore.loggingDb.write();
     
     this.telemetryClient.trackException({
       exception: error,
@@ -34,7 +47,9 @@ class ErrorHandler {
       severity: 3,
     });
     
-    process.exit(1);
+    return error;
+    
+    // process.exit(1);
   };
 }
 

@@ -1,7 +1,4 @@
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
-
-const indexModel = {
+export const issuesModel = {
   index: {
     startTime: '',
     stackOverflow: {
@@ -40,18 +37,3 @@ const indexModel = {
     endTime: ''
   }
 }
-
-class JsonStore {
-  constructor() {
-    this.db = new Low(new JSONFile('index.json'), indexModel);
-    (async () => {
-      await this.db.read();
-      this.db.data = indexModel;
-      await this.db.write();
-    })();
-  }
-};
-
-const jsonStore = new JsonStore();
-
-export { jsonStore };

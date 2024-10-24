@@ -15,10 +15,10 @@
  *
  * The class also includes utility methods for handling GitHub API configuration and error handling.
  */
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
-import { jsonStore } from '../jsonStore.js';
+import { jsonStore } from '../store/jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
@@ -96,7 +96,7 @@ class GitHubService extends DevOpsService {
       if (areObjectsInArrayEmpty(items )=== true || items.length === 0) {
         console.groupEnd();
         return {
-          status: 200,
+          status: axios.HttpStatusCode.NoContent,
           message: 'No new issues found.'
         };
       }
@@ -145,9 +145,9 @@ class GitHubService extends DevOpsService {
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
 
-      jsonStore.db.data.index.github.found.issues = issues;
-      jsonStore.db.data.index.github.found.count = issues.length;
-      await jsonStore.db.write();
+      jsonStore.issuesDb.data.index.github.found.issues = issues;
+      jsonStore.issuesDb.data.index.github.found.count = issues.length;
+      await jsonStore.issuesDb.write();
 
       console.groupEnd();
 
@@ -167,14 +167,19 @@ class GitHubService extends DevOpsService {
          * @returns {Promise<Object>} - The response from the DevOps API containing the existing work item details, if any.
          */
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID']);
-
+        // console.log('Existing Issues Response:', existingIssuesResponse);
+          
+        if (existingIssuesResponse instanceof AxiosError) {
+          console.error(chalk.red('Error:', existingIssuesResponse.isAxiosError));
+          return this.errorHandler(existingIssuesResponse, 'GitHubService');
+        }
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
-        if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
+        else if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists: ', existingIssuesResponse.data.workItems.length);
           continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
-        else if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
+        else if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length > 0) {
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
@@ -188,11 +193,11 @@ class GitHubService extends DevOpsService {
              */
             const getWorkItemByUrlResponse = await this.getWorkItemByUrl(existingIssue['url']);
 
-            if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data === undefined) {
+            if (getWorkItemByUrlResponse.status === axios.HttpStatusCode.Ok && getWorkItemByUrlResponse.data === undefined) {
               // console.debug('No Matching Issues Exist:', existingIssuesResponse.data);
               // Do nothing and continue to next iteration.
             }
-            else if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.id) {
+            else if (getWorkItemByUrlResponse.status === axios.HttpStatusCode.Ok && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.id) {
               // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
               existingIssuesDetails.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
             }
@@ -206,8 +211,8 @@ class GitHubService extends DevOpsService {
       else {
         console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
 
-        jsonStore.db.data.index.github.devOps = existingIssuesDetails;
-        await jsonStore.db.write();
+        jsonStore.issuesDb.data.index.github.devOps = existingIssuesDetails;
+        await jsonStore.issuesDb.write();
   
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
         for (const issue of issues) {
@@ -218,17 +223,19 @@ class GitHubService extends DevOpsService {
         }
       }
 
-      // jsonStore.db.data.index.github.newIssues.issues = issues;
-      // jsonStore.db.data.index.github.newIssues.count = issues.length;
-      // await jsonStore.db.write();
+      // jsonStore.issuesDb.data.index.github.newIssues.issues = issues;
+      // jsonStore.issuesDb.data.index.github.newIssues.count = issues.length;
+      // await jsonStore.issuesDb.write();
 
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
         console.groupEnd();
-        // console.log('No new issues to add');
-        return { status: axios.HttpStatusCode.NoContent, message: 'No new issues to add' };
+        return {
+          status: axios.HttpStatusCode.NoContent,
+          message: 'No new issues to add'
+        };
       }
       console.groupEnd();
       
@@ -238,13 +245,13 @@ class GitHubService extends DevOpsService {
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
 
-      jsonStore.db.data.index.github.newIssues.issues = unassignedIssues;
-      jsonStore.db.data.index.github.newIssues.count = unassignedIssues.length;
-      await jsonStore.db.write();
+      jsonStore.issuesDb.data.index.github.newIssues.issues = unassignedIssues;
+      jsonStore.issuesDb.data.index.github.newIssues.count = unassignedIssues.length;
+      await jsonStore.issuesDb.write();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
-      this.errorHandler(error, 'GitHubService');
+      return await this.errorHandler(error, 'GitHubService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
   }
@@ -261,7 +268,7 @@ class GitHubService extends DevOpsService {
    */
   async getIssues({ org, repo, labels, ignoreLabels = [] }) {
     console.log('Fetching ' + chalk.yellow(repo) + ' issues...');
-    await sleep(200);
+    await sleep(300);
 
     const emptyData = [];
     const testData = [
