@@ -1,10 +1,11 @@
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import axios from 'axios';
+import { Command, InvalidArgumentError } from 'commander';
 
-import { TelemetryClient } from './telemetryClient.js';
 import { sleep } from './utils.js';
 import { jsonStore } from './store/jsonStore.js';
+import { TelemetryClient } from './telemetryClient.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
 import { generateIndexHtml } from './createIndex.js';
@@ -12,57 +13,151 @@ import { ErrorHandler } from './errorHandler.js';
 
 dotenv.config(process.env);
 
-/**
- * Environment variables used to configure the application.
- * 
- * @property {number} NUMBER_OF_DAYS_TO_BACK_QUERY - The number of days to go back when querying data.
- * @property {number} TIME_OF_DAY_TO_QUERY_FROM - The time of day to start querying data.
- */
-const {
-  USE_TEST_DATA,
-  NUMBER_OF_DAYS_TO_BACK_QUERY,
-  TIME_OF_DAY_TO_QUERY_FROM
-} = process.env;
-
-// // Get node arguments.
-// const args = process.argv.slice(2);
-// const [commands] = args;
-// const [NumberOfDaysToQuery] = args.slice(0);
-// const [StartTimeOfQuery] = args.slice(1);
-// const [AzureDevOpsPat] = args.slice(2);
-// const [UseTestData] = args.slice(3);
-
-// if (commands === '--help' || commands === '-h') {
-//   console.log('Usage: node index.js <<NumberOfDaysToQuery>> <<StartTimeOfQuery>> <<AzureDevOpsPat>> <<UseTestData>>');
-//   process.exit(0);
-// }
-
-// const queryNumberOfDays = NumberOfDaysToQuery ? Number(NumberOfDaysToQuery) : 1;
-// const queryStartTime = StartTimeOfQuery ? Number(StartTimeOfQuery) : 11;
-// const personalAccessToken = AzureDevOpsPat ? AzureDevOpsPat : '';
-// const shouldUseTestData = UseTestData ? UseTestData : false;
-
-// console.log(queryNumberOfDays, queryStartTime, personalAccessToken, shouldUseTestData);
-
-const useTestData = USE_TEST_DATA === 'true' ? true : false;
-
-// Initialize the error handler.
-const errorHandler = new ErrorHandler();
-
 // Initialize the telemetry client.
 const telemetryClient = new TelemetryClient();
 
 // Initialize the DevOps service.
 const devOpsService = new DevOpsService(telemetryClient);
 
+const settingsDb = await jsonStore.settingsDb;
+await settingsDb.read();
+
+const program = new Command();
+
 try {
   (async () => {
 
-    if (!!useTestData) console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
+    program
+      .name('support-tracker')
+      .description('A CLI tool for tracking issues from Stack Overflow and GitHub.')
+      .version('2.1.0')
+      .showSuggestionAfterError(true)
+      // .helpOption(false)
+      .action((str, options) => {
+        console.log('str ', str, options);
+        if (options.args[0] === 'help') {
+          program.help();
+        }
+        else {
+          return;
+        }
+      })
+
+    program.command('get-params')
+      .description('Get the current parameters for the application.')
+      .action(async (options) => {
+        const { azureDevOpsUsername, azureDevOpsPat, useTestData, numberOfDaysToQuery, startTimeOfQuery } = settingsDb.data;
+        console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername }`));
+        console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat }`));
+        console.log(chalk.green(`Use Test Data:`), chalk.white(`${ useTestData }`));
+        console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
+        console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
+        process.exit(0);
+      });
+
+    program.command('set-params')
+      .description('Set the number of days to query for issues.')
+      .argument('[number-of-days]', 'number of days to query for issues', 1)
+      .argument('[starting-hour]', 'hour of day to query for issues', 11)
+      .action(async (numberOfDaysToQuery, startTimeOfQuery, options) => {
+        if (isNaN(numberOfDaysToQuery) || numberOfDaysToQuery < 1) {
+          const error = new InvalidArgumentError('Invalid or missing argument: <number-of-days>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        if (isNaN(startTimeOfQuery) || startTimeOfQuery < 1 || startTimeOfQuery > 23) {
+          const error = new InvalidArgumentError('Invalid or missing argument: <starting-hour>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+
+        try {
+          settingsDb.data.numberOfDaysToQuery = Number(numberOfDaysToQuery) || settingsDb.data.numberOfDaysToQuery;
+          settingsDb.data.startTimeOfQuery = Number(startTimeOfQuery) || settingsDb.data.startTimeOfQuery;
+          await settingsDb.write();
+        } catch (error) {
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+      });
+
+    function isValidJSON(str) {
+      try {
+        JSON.parse(str);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    program.command('set-use-test-data')
+      .description('Set the useTestData flag.')
+      .argument('<use-test-data>', 'use test data flag')
+      .action(async (useTestData, options) => {
+        if (!isValidJSON(useTestData)) {
+          const error = new InvalidArgumentError('Invalid or missing argument: <use-test-data>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        try {
+          settingsDb.data.useTestData = JSON.parse(useTestData) ?? settingsDb.data.useTestData;
+          await settingsDb.write();
+        } catch (error) {
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        process.exit(0);
+      });
+
+    const prohibitedArgs = [undefined, null, 'undefined', 'null'];
+    program.command('set-username')
+      .description('Set the Azure DevOps username.')
+      .argument('<username>', 'Azure DevOps username')
+      .action(async (azureDevOpsUsername, options) => {
+        if (prohibitedArgs.includes(azureDevOpsUsername) || typeof azureDevOpsUsername !== 'string') {
+          const error = new InvalidArgumentError('Invalid or missing argument: <username>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+
+        try {
+          settingsDb.data.azureDevOpsUsername = azureDevOpsUsername ?? settingsDb.data.azureDevOpsUsername;
+          await settingsDb.write();
+        } catch (error) {
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        process.exit(0);
+      });
+
+    program.command('set-pat')
+      .description('Set the Azure DevOps personal access token.')
+      .argument('<pat>', 'Azure DevOps personal access token')
+      .action(async (azureDevOpsPat, options) => {
+        if (prohibitedArgs.includes(azureDevOpsPat) || typeof azureDevOpsPat !== 'string') {
+          const error = new InvalidArgumentError('Invalid or missing argument: <pat>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+
+        try {
+          settingsDb.data.azureDevOpsPat = azureDevOpsPat ?? settingsDb.data.azureDevOpsPat;
+          await settingsDb.write();
+        } catch (error) {
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        process.exit(0);
+      });
+
+    program.parse();
+
+    const args = process.argv.slice(2);
+    if ( args.length = 0 && settingsDb.data.useTestData === true) console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
 
     let queryDate = new Date();
-    queryDate.setDate(queryDate.getDate()-NUMBER_OF_DAYS_TO_BACK_QUERY);
-    const timeOfDayToQueryFrom = Number(TIME_OF_DAY_TO_QUERY_FROM);
+    queryDate.setDate(queryDate.getDate()-settingsDb.data.numberOfDaysToQuery);
+    const timeOfDayToQueryFrom = Number(settingsDb.data.startTimeOfQuery);
     queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
     queryDate = new Date(queryDate.toUTCString());
   
@@ -126,7 +221,7 @@ try {
 
       jsonStore.issuesDb.data.index.endTime = localEndTime;
       await jsonStore.issuesDb.write();
-      await generateIndexHtml(jsonStore.issuesDb.data);
+      // await generateIndexHtml(jsonStore.issuesDb.data);
 
       sleep(1500).then(() => {
         telemetryClient.flushClient();

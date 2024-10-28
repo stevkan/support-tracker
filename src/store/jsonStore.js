@@ -1,12 +1,12 @@
 import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
-import { issuesModel, loggingModel } from './models/models.js';
+import { JSONFile, JSONFilePreset } from 'lowdb/node';
+import { issuesModel, loggingModel, settingsModel } from './models/models.js';
 
 class JsonStore {
   constructor() {
-    this.issuesDb = new Low(new JSONFile('issues.json'), null);
-    this.loggingDb = new Low(new JSONFile('logging.json'), null);
-    this.loggingDb = new Low(new JSONFile('settings.json'), null);
+    this.issuesDb = new Low(new JSONFile('./src/store/db/issues.json'), null);
+    this.loggingDb = new Low(new JSONFile('./src/store/db/logging.json'), null);
+    this.settingsDb = new Low(new JSONFile('./src/store/db/settings.json'), settingsModel);
   }
 
   async initializeDbs() {
@@ -19,10 +19,15 @@ class JsonStore {
     this.loggingDb.data = loggingModel;
     await this.loggingDb.write();
     console.log('Logging store initialized');
+    
+    await this.settingsDb.read();
+    // this.settingsDb.data = settingsModel;
+    await this.settingsDb.write();
+    console.log('Settings store initialized');
   }
 };
 
 const jsonStore = new JsonStore();
-jsonStore.initializeDbs();
+await jsonStore.initializeDbs();
 
 export { jsonStore };

@@ -22,12 +22,6 @@ import { jsonStore } from '../store/jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
-const {
-  USE_TEST_DATA
-} = process.env;
-
-const useTestData = USE_TEST_DATA === 'true' ? true : false;
-
 const htmlToTextOptions = {
   wordwrap: false,
   decodeEntities: true
@@ -55,6 +49,8 @@ class GitHubService extends DevOpsService {
     this.source = source;
     this.lastRun = lastRun;
     this.telemetryClient = telemetryClient;
+
+    this.useTestData = async () => await jsonStore.settingsDb.data.read();
   }
 
   /**
@@ -340,10 +336,10 @@ class GitHubService extends DevOpsService {
     const config = this.getGitHubConfig();
 
     if (labels) {
-      if (!!useTestData) return await emptyData;
+      if (!!this.useTestData) return await emptyData;
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config);
     } else {
-      if (!!useTestData) return await testData;
+      if (!!this.useTestData) return await testData;
       return this.getIssuesWithoutLabels(org, repo, ignoreLabels, config);
     }
   }

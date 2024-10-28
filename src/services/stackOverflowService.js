@@ -30,12 +30,6 @@ import { jsonStore } from '../store/jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, removeDuplicates, sleep } from '../utils.js';
 
-const {
-  USE_TEST_DATA
-} = process.env;
-
-const useTestData = USE_TEST_DATA === 'true' ? true : false;
-
 const htmlToTextOptions = {
   wordwrap: false,
   decodeEntities: true
@@ -62,6 +56,8 @@ class StackOverflowService extends DevOpsService {
     this.source = source;
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
+
+    this.useTestData = async () => await jsonStore.settingsDb.data.read();
   }
 
   /**
@@ -320,7 +316,7 @@ class StackOverflowService extends DevOpsService {
       ...configHeaders,
       'User-Agent': 'StackOverflowService'
     }
-    const urlPath = url ? url : 'https://api.stackexchange.com/2.2/questions';
+    const urlPath = url ? url : 'https://api.stackexchange.com/2.3/questions';
     const response = await axios.get(urlPath, { params, headers });
     return response;
   }
@@ -416,7 +412,7 @@ class StackOverflowService extends DevOpsService {
 
     const params = this.buildRequestParams(tagged, this.lastRun);
 
-    if (!!useTestData) return await testData;
+    if (!!this.useTestData) return await testData;
     return await this.fetchStackOverflowIssues(params)
       .then(response => {
         this.logAndTrackResponse(response.data.items);

@@ -1,0 +1,7 @@
+{
+  "azureDevOpsUsername": "steven.kanberg@teksystemsgs.com",
+  "azureDevOpsPat": "c9b4ec7f-7502-4089-9a48-f7d344e1d602",
+  "useTestData": true,
+  "numberOfDaysToQuery": 3,
+  "startTimeOfQuery": 11
+}

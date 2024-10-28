@@ -9,6 +9,7 @@
 import axios from 'axios';
 import CryptoJS from 'crypto-js';
 import { ErrorHandler } from '../errorHandler.js';
+import { jsonStore } from '../store/jsonStore.js';
 
 /**
  * Environment variables used to configure the Azure DevOps integration.
@@ -34,6 +35,7 @@ class DevOpsService extends ErrorHandler {
   constructor(telemetryClient) {
     super(telemetryClient);
     this.telemetryClient = telemetryClient;
+    this.settingsDb = async () => await jsonStore.settingsDb.read();
   }
 
   /**
@@ -97,7 +99,7 @@ class DevOpsService extends ErrorHandler {
               WHERE [System.WorkItemType] = 'Issue'
               AND []`
     };
-
+    console.log('THIS ', await this.settingsDb());
     const config = {
       headers: {
         'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import { InvalidArgumentError } from 'commander';
 
 import { jsonStore } from './store/jsonStore.js';
 
@@ -30,6 +31,9 @@ class ErrorHandler {
     } else if (error instanceof ReferenceError) {
       console.error(chalk.red(`Reference error in ${ serviceName }: ${ stack }`));
       error.name = serviceName;
+    } else if (error instanceof InvalidArgumentError) {
+      console.error(chalk.red(`Unexpected error: ${ stack }`));
+      error.name = 'Unknown';
     } else if (error instanceof Error && serviceName) {
       console.error(chalk.red(`Unexpected error in ${ serviceName }: ${ stack }`));
       error.name = serviceName;
