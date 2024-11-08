@@ -26,15 +26,9 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
-import { jsonStore } from '../jsonStore.js';
+import { jsonStore } from '../store/jsonStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, removeDuplicates, sleep } from '../utils.js';
-
-const {
-  USE_TEST_DATA
-} = process.env;
-
-const useTestData = USE_TEST_DATA === 'true' ? true : false;
 
 const htmlToTextOptions = {
   wordwrap: false,
@@ -62,6 +56,8 @@ class StackOverflowService extends DevOpsService {
     this.source = source;
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
+
+    this.settings = jsonStore.settingsDb.read();
   }
 
   /**
@@ -74,7 +70,7 @@ class StackOverflowService extends DevOpsService {
    * 4. Filters out any questions that have already been assigned to the DevOps system.
    * 5. Adds any new, unassigned questions to the DevOps system.
    *
-   * @returns {Promise<{ status: number, message: string }>} - An object containing the HTTP status code and a message indicating the result of the operation.
+   * @returns {Promise<{ error, { status: number, message: string } }>} - An object containing the HTTP status code and a message indicating the result of the operation.
    */
   async process() {
     try {
@@ -109,7 +105,7 @@ class StackOverflowService extends DevOpsService {
       if (areObjectsInArrayEmpty(items) === true || items.length === 0) {
         console.groupEnd();
         return {
-          status: 200,
+          status: axios.HttpStatusCode.NoContent,
           message: 'No new posts found.'
         };
       }
@@ -149,14 +145,13 @@ class StackOverflowService extends DevOpsService {
       console.table(issues, ['Custom.IssueID', 'System.Title']);
 
       if (this.tags.includes('bot-framework')) {
-        jsonStore.db.data.index.internalStackOverflow.found.issues = issues;
-        jsonStore.db.data.index.internalStackOverflow.found.count = issues.length;
+        await jsonStore.issuesDb.update('index.internalStackOverflow.found.issues', issues);
+        await jsonStore.issuesDb.update('index.internalStackOverflow.found.count', issues.length);
       }
       else {
-        jsonStore.db.data.index.stackOverflow.found.issues = issues;
-        jsonStore.db.data.index.stackOverflow.found.count = issues.length;
+        await jsonStore.issuesDb.update('index.stackOverflow.found.issues', issues);
+        await jsonStore.issuesDb.update('index.stackOverflow.found.count', issues.length);
       }
-      await jsonStore.db.write();
 
       console.groupEnd();
 
@@ -178,13 +173,13 @@ class StackOverflowService extends DevOpsService {
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID']);
 
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
-        if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
+        if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length === 0) {
           // console.debug('No Issue Exists:', existingIssuesResponse.data.workItems.length);
           unassignedIssues.push(issue);
           // continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
-        if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length > 0) {
+        if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length > 0) {
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
@@ -198,12 +193,12 @@ class StackOverflowService extends DevOpsService {
              */
             const getWorkItemByUrlResponse = await this.getWorkItemByUrl(existingIssue['url']);
 
-            if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data === undefined) {
+            if (getWorkItemByUrlResponse.status === axios.HttpStatusCode.Ok && getWorkItemByUrlResponse.data === undefined) {
               // console.debug('No Matching Issues Exists:', existingIssuesResponse.data);
               // Do nothing and continue to next iteration.
             }
-            // else if (getWorkItemByUrlResponse.status === 200 && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
-            else if (getWorkItemByUrlResponse.status === 200 && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.fields && getWorkItemByUrlResponse.data.fields['Custom.IssueID']) {
+            // else if (getWorkItemByUrlResponse.status === axios.HttpStatusCode.Ok && Number(getWorkItemByUrlResponse.data.fields['Custom.IssueID']) === Number(issue['Custom.IssueID'])) {
+            else if (getWorkItemByUrlResponse.status === axios.HttpStatusCode.Ok && getWorkItemByUrlResponse.data && getWorkItemByUrlResponse.data.fields && getWorkItemByUrlResponse.data.fields['Custom.IssueID']) {
               // console.debug('Match?', { 'id': getWorkItemByUrlResponse.data.id, 'IssueID': issue['Custom.IssueID'], 'Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
               possibleDevOpsMatches.push({ 'id': getWorkItemByUrlResponse.data.id, 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': getWorkItemByUrlResponse.data.fields['System.Title'] });
             }
@@ -218,12 +213,11 @@ class StackOverflowService extends DevOpsService {
         console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
 
         if (this.tags.includes('bot-framework')) {
-          jsonStore.db.data.index.internalStackOverflow.devOps = possibleDevOpsMatches;
+          await jsonStore.issuesDb.update('index.internalStackOverflow.devOps', possibleDevOpsMatches);
         }
         else {
-          jsonStore.db.data.index.stackOverflow.devOps = possibleDevOpsMatches;
+          await jsonStore.issuesDb.update('index.stackOverflow.devOps', possibleDevOpsMatches);
         }
-        await jsonStore.db.write();
 
         
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
@@ -236,23 +230,14 @@ class StackOverflowService extends DevOpsService {
         }
       }
 
-      // if (this.tags.includes('bot-framework')) {
-      //   jsonStore.db.data.index.internalStackOverflow.newIssues.issues = issues;
-      //   jsonStore.db.data.index.internalStackOverflow.newIssues.count = issues.length;
-      // }
-      // else {
-      //   jsonStore.db.data.index.stackOverflow.newIssues.issues = issues;
-      //   jsonStore.db.data.index.stackOverflow.newIssues.count = issues.length;
-      // }
-      // await jsonStore.db.write();
-
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
       // If no new issues are found, returns a status code of 204 and a message indicating that no new issues need to be added.
       if (unassignedIssues.length === 0) {
         console.groupEnd();
-        // console.log('No new posts to add');
-        return { status: axios.HttpStatusCode.NoContent, message: 'No new posts to add' };
+        return {
+          status: axios.HttpStatusCode.NoContent,
+          message: 'No new posts to add' };
       }
       console.groupEnd();
       
@@ -263,18 +248,17 @@ class StackOverflowService extends DevOpsService {
       console.groupEnd();
 
       if (this.tags.includes('bot-framework')) {
-        jsonStore.db.data.index.internalStackOverflow.newIssues.issues = unassignedIssues;
-        jsonStore.db.data.index.internalStackOverflow.newIssues.count = unassignedIssues.length;
+        await jsonStore.issuesDb.update('index.internalStackOverflow.newIssues.issues', unassignedIssues);
+        await jsonStore.issuesDb.update('index.internalStackOverflow.newIssues.count', unassignedIssues.length);
       }
       else {
-        jsonStore.db.data.index.stackOverflow.newIssues.issues = unassignedIssues;
-        jsonStore.db.data.index.stackOverflow.newIssues.count = unassignedIssues.length;
+        await jsonStore.issuesDb.update('index.stackOverflow.newIssues.issues', unassignedIssues);
+        await jsonStore.issuesDb.update('index.stackOverflow.newIssues.count', unassignedIssues.length);
       }
-      await jsonStore.db.write();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
-      this.errorHandler(error, 'StackOverflowService');
+      return await this.errorHandler(error, 'StackOverflowService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
   }
@@ -319,7 +303,7 @@ class StackOverflowService extends DevOpsService {
       ...configHeaders,
       'User-Agent': 'StackOverflowService'
     }
-    const urlPath = url ? url : 'https://api.stackexchange.com/2.2/questions';
+    const urlPath = url ? url : 'https://api.stackexchange.com/2.3/questions';
     const response = await axios.get(urlPath, { params, headers });
     return response;
   }
@@ -415,7 +399,7 @@ class StackOverflowService extends DevOpsService {
 
     const params = this.buildRequestParams(tagged, this.lastRun);
 
-    if (!!useTestData) return await testData;
+    if (!!(await this.settings).useTestData) return await testData;
     return await this.fetchStackOverflowIssues(params)
       .then(response => {
         this.logAndTrackResponse(response.data.items);

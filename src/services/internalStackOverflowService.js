@@ -1,11 +1,6 @@
 import chalk from 'chalk';
 import { sleep } from '../utils.js';
-
-const {
-  USE_TEST_DATA
-} = process.env;
-
-const useTestData = USE_TEST_DATA === 'true' ? true : false;
+import { jsonStore } from '../store/jsonStore.js';
 
 /**
  * Provides an implementation of the StackOverflowService that interacts with the internal Microsoft Stack Overflow Enterprise API.
@@ -29,6 +24,7 @@ class InternalStackOverflowService extends StackOverflowService {
     this.source = source;
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
+    this.settings = jsonStore.settingsDb.read();
   }
   /**
    * Fetches questions from the internal Stack Overflow Enterprise API, using the provided API key, and returns the response data.
@@ -41,7 +37,7 @@ class InternalStackOverflowService extends StackOverflowService {
     await sleep(1000);
 
     const emptyData = [];
-    const testDataInternal = [
+    const testData = [
       {
         "tags": [
           "bot-framework",
@@ -71,11 +67,13 @@ class InternalStackOverflowService extends StackOverflowService {
 
     const params = this.buildRequestParams(tagged, this.lastRun);
     const headers = {
+      'User-Agent': 'InternalStackOverflowService',
       'X-API-Key': process.env.STACK_OVERFLOW_ENTERPRISE_KEY
     };
 
-    if (!!useTestData) return await emptyData;
-    return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.2/questions', headers })
+    console.log('THIS SETTINGS ', (await this.settings).useTestData);
+    if (!!(await this.settings).useTestData) return await testData;
+    return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.3/questions', headers })
       .then(response => {
         this.logAndTrackResponse(response.data.items);
         response.data.items.constructor.source = 'InternalStackOverflowService';

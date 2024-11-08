@@ -9,6 +9,7 @@
 import axios from 'axios';
 import CryptoJS from 'crypto-js';
 import { ErrorHandler } from '../errorHandler.js';
+import { jsonStore } from '../store/jsonStore.js';
 
 /**
  * Environment variables used to configure the Azure DevOps integration.
@@ -21,9 +22,7 @@ import { ErrorHandler } from '../errorHandler.js';
 const {
   AZURE_DEVOPS_API_VERSION,
   AZURE_DEVOPS_ORG,
-  AZURE_DEVOPS_PAT,
   AZURE_DEVOPS_PROJECT,
-  AZURE_DEVOPS_USERNAME
 } = process.env;
 
 /**
@@ -34,6 +33,7 @@ class DevOpsService extends ErrorHandler {
   constructor(telemetryClient) {
     super(telemetryClient);
     this.telemetryClient = telemetryClient;
+    this.settings = jsonStore.settingsDb.read();
   }
 
   /**
@@ -45,7 +45,7 @@ class DevOpsService extends ErrorHandler {
    * @returns {Promise<AxiosResponse>} The response from the Azure DevOps API containing the created work items.
    * @throws {Error} If an error occurs during the issue creation process.
    */
-  addIssues(issues) {
+  async addIssues(issues) {
     for (const issue of issues) {
       const data = Object.keys(issue).map(key => ({
         "op": "add",
@@ -54,7 +54,7 @@ class DevOpsService extends ErrorHandler {
         "value": issue[key]
       }));
 
-      const credentials = `${AZURE_DEVOPS_USERNAME}:${AZURE_DEVOPS_PAT}`;
+      const credentials = `${(await this.settings).azureDevOpsUserName}:${(await this.settings).azureDevOpsPat}`;
       const buffered = Buffer.from(credentials).toString('base64')
       const raw = CryptoJS.enc.Base64.parse(buffered);
       const encoded = CryptoJS.enc.Base64.stringify(raw);
@@ -97,11 +97,11 @@ class DevOpsService extends ErrorHandler {
               WHERE [System.WorkItemType] = 'Issue'
               AND []`
     };
-
+    console.log('THIS ', await this.settingsDb());
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(':' + AZURE_DEVOPS_PAT).toString('base64')}`
+        'Authorization': `Basic ${Buffer.from(':' + (await this.settings).azureDevOpsPat).toString('base64')}`
       }
     };
 
@@ -112,8 +112,8 @@ class DevOpsService extends ErrorHandler {
         // Step 2: Get detailed information for each work item
         return await axios.get(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${AZURE_DEVOPS_API_VERSION}`, {
           auth: {
-            username: AZURE_DEVOPS_USERNAME,
-            password: AZURE_DEVOPS_PAT
+            username: (await this.settings).azureDevOpsUserName,
+            password: (await this.settings).azureDevOpsPat
           },
           headers: {
             'Content-Type': 'application/json-patch+json',
@@ -150,7 +150,7 @@ class DevOpsService extends ErrorHandler {
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(':' + AZURE_DEVOPS_PAT).toString('base64')}`
+        'Authorization': `Basic ${Buffer.from(':' + (await this.settings).azureDevOpsPat).toString('base64')}`
       }
     };
 
@@ -161,8 +161,8 @@ class DevOpsService extends ErrorHandler {
         // Step 2: Get detailed information for each work item
         return await axios.get(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${AZURE_DEVOPS_API_VERSION}`, {
           auth: {
-            username: AZURE_DEVOPS_USERNAME,
-            password: AZURE_DEVOPS_PAT
+            username: (await this.settings).azureDevOpsUserName,
+            password: (await this.settings).azureDevOpsPat
           },
           headers: {
             'Content-Type': 'application/json-patch+json',
@@ -189,7 +189,7 @@ class DevOpsService extends ErrorHandler {
    */
   async getWorkItemByUrl(url) {
 
-    const credentials = `${AZURE_DEVOPS_USERNAME}:${AZURE_DEVOPS_PAT}`;
+    const credentials = `${(await this.settings).azureDevOpsUsername}:${(await this.settings).azureDevOpsPat}`;
     const buffered = Buffer.from(credentials).toString('base64')
     const raw = CryptoJS.enc.Base64.parse(buffered);
     const encoded = CryptoJS.enc.Base64.stringify(raw);
@@ -229,7 +229,7 @@ class DevOpsService extends ErrorHandler {
               AND [Custom.IssueID] = '${id}'`
     };
 
-    const credentials = `${AZURE_DEVOPS_USERNAME}:${AZURE_DEVOPS_PAT}`;
+    const credentials = `${(await this.settings).azureDevOpsUsername}:${(await this.settings).azureDevOpsPat}`;
     const buffered = Buffer.from(credentials).toString('base64')
     const raw = CryptoJS.enc.Base64.parse(buffered);
     const encoded = CryptoJS.enc.Base64.stringify(raw);
@@ -252,8 +252,7 @@ class DevOpsService extends ErrorHandler {
         return response;
       })
       .catch(error => {
-        this.errorHandler(error, 'DevOpsService');
-        throw error;
+        return this.errorHandler(error, 'DevOpsService');
       });
   }
 
