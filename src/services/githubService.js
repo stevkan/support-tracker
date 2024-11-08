@@ -49,8 +49,7 @@ class GitHubService extends DevOpsService {
     this.source = source;
     this.lastRun = lastRun;
     this.telemetryClient = telemetryClient;
-
-    this.useTestData = async () => await jsonStore.settingsDb.data.read();
+    this.settings = jsonStore.settingsDb.read()
   }
 
   /**
@@ -140,10 +139,9 @@ class GitHubService extends DevOpsService {
       //   console.debug('New Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
       // }
       console.table(issues, ['Custom.IssueID', 'System.Title']);
-
-      jsonStore.issuesDb.data.index.github.found.issues = issues;
-      jsonStore.issuesDb.data.index.github.found.count = issues.length;
-      await jsonStore.issuesDb.write();
+      
+      await jsonStore.issuesDb.update('index.github.found.issues', issues);
+      await jsonStore.issuesDb.update('index.github.found.count', issues.length);
 
       console.groupEnd();
 
@@ -207,8 +205,7 @@ class GitHubService extends DevOpsService {
       else {
         console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
 
-        jsonStore.issuesDb.data.index.github.devOps = existingIssuesDetails;
-        await jsonStore.issuesDb.write();
+        await jsonStore.issuesDb.update('index.github.devOps', existingIssuesDetails);
   
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
         for (const issue of issues) {
@@ -219,8 +216,8 @@ class GitHubService extends DevOpsService {
         }
       }
 
-      // jsonStore.issuesDb.data.index.github.newIssues.issues = issues;
-      // jsonStore.issuesDb.data.index.github.newIssues.count = issues.length;
+      // jsonStore.issuesDb.db.index.github.newIssues.issues = issues;
+      // jsonStore.issuesDb.db.index.github.newIssues.count = issues.length;
       // await jsonStore.issuesDb.write();
 
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
@@ -240,10 +237,9 @@ class GitHubService extends DevOpsService {
 
       console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
       console.groupEnd();
-
-      jsonStore.issuesDb.data.index.github.newIssues.issues = unassignedIssues;
-      jsonStore.issuesDb.data.index.github.newIssues.count = unassignedIssues.length;
-      await jsonStore.issuesDb.write();
+      
+      await jsonStore.issuesDb.update('index.github.newIssues.issues', unassignedIssues);
+      await jsonStore.issuesDb.update('index.github.newIssues.count', unassignedIssues.length);
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
@@ -334,12 +330,11 @@ class GitHubService extends DevOpsService {
     ];
 
     const config = this.getGitHubConfig();
-
     if (labels) {
-      if (!!this.useTestData) return await emptyData;
+      if (!!(await this.settings).useTestData) return await emptyData;
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config);
     } else {
-      if (!!this.useTestData) return await testData;
+      if (!!(await this.settings).useTestData) return await testData;
       return this.getIssuesWithoutLabels(org, repo, ignoreLabels, config);
     }
   }
@@ -352,7 +347,7 @@ class GitHubService extends DevOpsService {
   getGitHubConfig() {
     return {
       method: 'POST',
-      url: 'https://api.github.com/graphql',
+      url: process.env.GITHUB_API_URL,
       headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'Content-Type': 'application/json'}
     };
   }

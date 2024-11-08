@@ -1,3 +1,1 @@
-export const loggingModel = {
-  logs: []
-};
+export const loggingModel = [];

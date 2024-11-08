@@ -11,6 +11,7 @@ import { jsonStore } from './store/jsonStore.js';
 class ErrorHandler {
   constructor(telemetryClient) {
     this.telemetryClient = telemetryClient;
+    this.logging = jsonStore.loggingDb.read();
   }
 
   /**
@@ -42,8 +43,11 @@ class ErrorHandler {
       error.name = 'Unknown';
     }
     
-    jsonStore.loggingDb.data.logs.push({ stack });
-    await jsonStore.loggingDb.write();
+    console.log('logs ', await this.logging);
+    const logs = await this.logging;
+    logs.push({ stack });
+    // await jsonStore.loggingDb.update(null, logs);
+    await jsonStore.loggingDb.write(logs);
     
     this.telemetryClient.trackException({
       exception: error,

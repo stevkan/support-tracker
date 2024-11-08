@@ -10,6 +10,7 @@ import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverfl
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
 import { generateIndexHtml } from './createIndex.js';
 import { ErrorHandler } from './errorHandler.js';
+import { issuesModel } from './store/models/issuesModel.js';
 
 dotenv.config(process.env);
 
@@ -20,7 +21,7 @@ const telemetryClient = new TelemetryClient();
 const devOpsService = new DevOpsService(telemetryClient);
 
 const settingsDb = await jsonStore.settingsDb;
-await settingsDb.read();
+const settings = await settingsDb.read();
 
 const program = new Command();
 
@@ -32,28 +33,21 @@ try {
       .description('A CLI tool for tracking issues from Stack Overflow and GitHub.')
       .version('2.1.0')
       .showSuggestionAfterError(true)
-      // .helpOption(false)
-      .action((str, options) => {
-        console.log('str ', str, options);
-        if (options.args[0] === 'help') {
-          program.help();
-        }
-        else {
-          return;
-        }
-      })
 
     program.command('get-params')
       .description('Get the current parameters for the application.')
-      .action(async (options) => {
-        const { azureDevOpsUsername, azureDevOpsPat, useTestData, numberOfDaysToQuery, startTimeOfQuery } = settingsDb.data;
-        console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername }`));
-        console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat }`));
-        console.log(chalk.green(`Use Test Data:`), chalk.white(`${ useTestData }`));
-        console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
-        console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
-        process.exit(0);
-      });
+      .action(async (str, options) => {
+          const { azureDevOpsUsername, azureDevOpsPat, useTestData, numberOfDaysToQuery, startTimeOfQuery } = settings;
+          console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername }`));
+          console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat }`));
+          console.log(chalk.green(`Use Test Data:`), chalk.white(`${ useTestData }`));
+          console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
+          console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
+          process.exit(0);
+      })
+      .usage(' ')
+      .addHelpOption(false)
+      .addHelpText('after', chalk.green(`\nExample: support-tracker get-params`));
 
     program.command('set-params')
       .description('Set the number of days to query for issues.')
@@ -72,14 +66,19 @@ try {
         }
 
         try {
-          settingsDb.data.numberOfDaysToQuery = Number(numberOfDaysToQuery) || settingsDb.data.numberOfDaysToQuery;
-          settingsDb.data.startTimeOfQuery = Number(startTimeOfQuery) || settingsDb.data.startTimeOfQuery;
-          await settingsDb.write();
+          const days = Number(numberOfDaysToQuery) || (await settings).numberOfDaysToQuery;
+          const time = Number(startTimeOfQuery) || (await settings).startTimeOfQuery;
+          await settingsDb.update( 'numberOfDaysToQuery', days );
+          await settingsDb.update( 'startTimeOfQuery', time );
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
         }
-      });
+        process.exit(0);
+      })
+      .usage('[number-of-days] [starting-hour]')
+      .addHelpOption(false)
+      .addHelpText('after', chalk.green(`\nExample: support-tracker set-params 7 11`));
 
     function isValidJSON(str) {
       try {
@@ -91,7 +90,7 @@ try {
     }
 
     program.command('set-use-test-data')
-      .description('Set the useTestData flag.')
+      .description("Enables/disables the use of test data. [Default: false]")
       .argument('<use-test-data>', 'use test data flag')
       .action(async (useTestData, options) => {
         if (!isValidJSON(useTestData)) {
@@ -100,14 +99,17 @@ try {
           process.exit(1);
         }
         try {
-          settingsDb.data.useTestData = JSON.parse(useTestData) ?? settingsDb.data.useTestData;
-          await settingsDb.write();
+          const willUseTestData = JSON.parse(useTestData) ?? (await settings).useTestData;
+          await settingsDb.update('useTestData', willUseTestData);
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
         }
         process.exit(0);
-      });
+      })
+      .usage('<use-test-data>')
+      .addHelpOption(false)
+      .addHelpText('after', chalk.green(`\nExample: support-tracker set-use-test-data true`));
 
     const prohibitedArgs = [undefined, null, 'undefined', 'null'];
     program.command('set-username')
@@ -121,14 +123,17 @@ try {
         }
 
         try {
-          settingsDb.data.azureDevOpsUsername = azureDevOpsUsername ?? settingsDb.data.azureDevOpsUsername;
-          await settingsDb.write();
+          const username = azureDevOpsUsername ?? (await settings).azureDevOpsUsername;
+          await settingsDb.update('azureDevOpsUsername', username);
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
         }
         process.exit(0);
-      });
+      })
+      .usage('<username>')
+      .addHelpOption(false)
+      .addHelpText('after', chalk.green(`\nExample: support-tracker set-username <username>`));
 
     program.command('set-pat')
       .description('Set the Azure DevOps personal access token.')
@@ -141,23 +146,26 @@ try {
         }
 
         try {
-          settingsDb.data.azureDevOpsPat = azureDevOpsPat ?? settingsDb.data.azureDevOpsPat;
-          await settingsDb.write();
+          const pat = azureDevOpsPat ?? (await settings).azureDevOpsPat;
+          await settingsDb.update('azureDevOpsPat', pat);
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
         }
         process.exit(0);
-      });
+      })
+      .usage('<pat>')
+      .addHelpOption(false)
+      .addHelpText('after', chalk.green(`\nExample: support-tracker set-pat <pat>`));
 
     program.parse();
 
     const args = process.argv.slice(2);
-    if ( args.length = 0 && settingsDb.data.useTestData === true) console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
+    if ( args.length === 0 && (await settings).useTestData === true) console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
 
     let queryDate = new Date();
-    queryDate.setDate(queryDate.getDate()-settingsDb.data.numberOfDaysToQuery);
-    const timeOfDayToQueryFrom = Number(settingsDb.data.startTimeOfQuery);
+    queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
+    const timeOfDayToQueryFrom = Number((await settings).startTimeOfQuery);
     queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
     queryDate = new Date(queryDate.toUTCString());
   
@@ -188,8 +196,8 @@ try {
     console.info(chalk.green.bold(`Starting Processes: ${ localStartTime }`));
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
-    jsonStore.issuesDb.data.index.startTime = localStartTime;
-    await jsonStore.issuesDb.write();
+    // jsonStore.issuesDb.db.index.startTime = localStartTime;
+    await jsonStore.issuesDb.update('index.startTime', localStartTime);
   
     /**
      * Processes the data from the StackOverflow and GitHub services.
@@ -200,17 +208,17 @@ try {
     await stackOverflowService.process().then(res => handleServiceResponse(res));
     console.groupEnd();
     
-    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    await internalStackOverflowService.process().then(res => handleServiceResponse(res));
-    console.groupEnd();
+    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+    // await internalStackOverflowService.process().then(res => handleServiceResponse(res));
+    // console.groupEnd();
     
-    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    await gitHubService.process().then(res => handleServiceResponse(res));
-    console.groupEnd();
+    // console.group(chalk.blue.bold('\nProcessing GitHub...'))
+    // await gitHubService.process().then(res => handleServiceResponse(res));
+    // console.groupEnd();
 
     await new Promise(async (resolve) => {
       const endTime = new Date();
@@ -219,9 +227,8 @@ try {
       console.info(chalk.green.bold(`\nFinished Processes: ${ localEndTime }`));
       telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
-      jsonStore.issuesDb.data.index.endTime = localEndTime;
-      await jsonStore.issuesDb.write();
-      // await generateIndexHtml(jsonStore.issuesDb.data);
+      await jsonStore.issuesDb.update('index.endTime', localEndTime);
+      // await generateIndexHtml(jsonStore.issuesDb.db);
 
       sleep(1500).then(() => {
         telemetryClient.flushClient();

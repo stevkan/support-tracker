@@ -24,8 +24,7 @@ class InternalStackOverflowService extends StackOverflowService {
     this.source = source;
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
-
-    this.useTestData = async () => await jsonStore.settingsDb.data.read();
+    this.settings = jsonStore.settingsDb.read();
   }
   /**
    * Fetches questions from the internal Stack Overflow Enterprise API, using the provided API key, and returns the response data.
@@ -38,7 +37,7 @@ class InternalStackOverflowService extends StackOverflowService {
     await sleep(1000);
 
     const emptyData = [];
-    const testDataInternal = [
+    const testData = [
       {
         "tags": [
           "bot-framework",
@@ -72,7 +71,8 @@ class InternalStackOverflowService extends StackOverflowService {
       'X-API-Key': process.env.STACK_OVERFLOW_ENTERPRISE_KEY
     };
 
-    if (!!this.useTestData) return await emptyData;
+    console.log('THIS SETTINGS ', (await this.settings).useTestData);
+    if (!!(await this.settings).useTestData) return await testData;
     return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.3/questions', headers })
       .then(response => {
         this.logAndTrackResponse(response.data.items);

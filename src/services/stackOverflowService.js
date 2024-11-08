@@ -57,7 +57,7 @@ class StackOverflowService extends DevOpsService {
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
 
-    this.useTestData = async () => await jsonStore.settingsDb.data.read();
+    this.settings = jsonStore.settingsDb.read();
   }
 
   /**
@@ -145,14 +145,13 @@ class StackOverflowService extends DevOpsService {
       console.table(issues, ['Custom.IssueID', 'System.Title']);
 
       if (this.tags.includes('bot-framework')) {
-        jsonStore.issuesDb.data.index.internalStackOverflow.found.issues = issues;
-        jsonStore.issuesDb.data.index.internalStackOverflow.found.count = issues.length;
+        await jsonStore.issuesDb.update('index.internalStackOverflow.found.issues', issues);
+        await jsonStore.issuesDb.update('index.internalStackOverflow.found.count', issues.length);
       }
       else {
-        jsonStore.issuesDb.data.index.stackOverflow.found.issues = issues;
-        jsonStore.issuesDb.data.index.stackOverflow.found.count = issues.length;
+        await jsonStore.issuesDb.update('index.stackOverflow.found.issues', issues);
+        await jsonStore.issuesDb.update('index.stackOverflow.found.count', issues.length);
       }
-      await jsonStore.issuesDb.write();
 
       console.groupEnd();
 
@@ -214,12 +213,11 @@ class StackOverflowService extends DevOpsService {
         console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
 
         if (this.tags.includes('bot-framework')) {
-          jsonStore.issuesDb.data.index.internalStackOverflow.devOps = possibleDevOpsMatches;
+          await jsonStore.issuesDb.update('index.internalStackOverflow.devOps', possibleDevOpsMatches);
         }
         else {
-          jsonStore.issuesDb.data.index.stackOverflow.devOps = possibleDevOpsMatches;
+          await jsonStore.issuesDb.update('index.stackOverflow.devOps', possibleDevOpsMatches);
         }
-        await jsonStore.issuesDb.write();
 
         
         // Filters the unassigned issues to find new issues that need to be added to the DevOps system.
@@ -231,16 +229,6 @@ class StackOverflowService extends DevOpsService {
           }
         }
       }
-
-      // if (this.tags.includes('bot-framework')) {
-      //   jsonStore.issuesDb.data.index.internalStackOverflow.newIssues.issues = issues;
-      //   jsonStore.issuesDb.data.index.internalStackOverflow.newIssues.count = issues.length;
-      // }
-      // else {
-      //   jsonStore.issuesDb.data.index.stackOverflow.newIssues.issues = issues;
-      //   jsonStore.issuesDb.data.index.stackOverflow.newIssues.count = issues.length;
-      // }
-      // await jsonStore.issuesDb.write();
 
       // console.debug('Unassigned Issues:', unassignedIssues.length, unassignedIssues);
 
@@ -260,14 +248,13 @@ class StackOverflowService extends DevOpsService {
       console.groupEnd();
 
       if (this.tags.includes('bot-framework')) {
-        jsonStore.issuesDb.data.index.internalStackOverflow.newIssues.issues = unassignedIssues;
-        jsonStore.issuesDb.data.index.internalStackOverflow.newIssues.count = unassignedIssues.length;
+        await jsonStore.issuesDb.update('index.internalStackOverflow.newIssues.issues', unassignedIssues);
+        await jsonStore.issuesDb.update('index.internalStackOverflow.newIssues.count', unassignedIssues.length);
       }
       else {
-        jsonStore.issuesDb.data.index.stackOverflow.newIssues.issues = unassignedIssues;
-        jsonStore.issuesDb.data.index.stackOverflow.newIssues.count = unassignedIssues.length;
+        await jsonStore.issuesDb.update('index.stackOverflow.newIssues.issues', unassignedIssues);
+        await jsonStore.issuesDb.update('index.stackOverflow.newIssues.count', unassignedIssues.length);
       }
-      await jsonStore.issuesDb.write();
 
       return await this.addIssues(unassignedIssues);
     } catch (error) {
@@ -412,7 +399,7 @@ class StackOverflowService extends DevOpsService {
 
     const params = this.buildRequestParams(tagged, this.lastRun);
 
-    if (!!this.useTestData) return await testData;
+    if (!!(await this.settings).useTestData) return await testData;
     return await this.fetchStackOverflowIssues(params)
       .then(response => {
         this.logAndTrackResponse(response.data.items);

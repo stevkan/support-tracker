@@ -101,4 +101,6 @@ TimerTrigger/
 # Other
 /wip
 index.html
-index.json
+/src/store/db/issues.json
+/src/store/db/settings.json
+/src/store/db/logging.json

@@ -1,4 +1,4 @@
-# BFST Support Tracker Function
+# Support Tracker
 
 ## Business logic for pulling issues
 
@@ -42,15 +42,43 @@
 
 ---
 
-###### Deprecated:
+### Environment Variables
+| Variable Name | Description |
+| --- | --- |
+| `AZURE_DEVOPS_ORG`  | Azure DevOps Organization |
+| `AZURE_DEVOPS_PROJECT` | Azure DevOps Project |
+| `AZURE_DEVOPS_API_VERSION` | Azure DevOps API Version |
+| `APPINSIGHTS_INSTRUMENTATION_KEY` | Application Insights Instrumentation Key |
+| `GITHUB_TOKEN` | GitHub Token |
+| `GITHUB_API_URL` | GitHub API URL |
+| `STACK_OVERFLOW_ENTERPRISE_KEY` | Stack Overflow Enterprise Key |
 
-// ## Deployment
-// `https://docs.microsoft.com/en-us/azure/azure-functions/deployment-zip-push`  
-// `bash`  
-// `az login`  
-// `az functionapp deployment source config-zip -g botframeworksupporttrack -n BotFramework-Support-Tracker --src function.zip`
+### Command Line Arguments
+| Argument | Description |
+| --- | --- |
+| `help` | Display help information |
+| `help <command>` | Display help information for a specific command |
+| `get-params` | Get the current parameters for the application |
+| `set-params` | Set the current parameters for the application |
+| `set-use-test-data` | Enables/disables the use of test data [Default: false] |
+| `set-username` | Set the Azure DevOps username |
+| `set-pat` | Set the Azure DevOps Personal Access Token |
 
-// ## Personal Access Token
-// https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page#create-a-pat
+Example: `npm start set-params 4 12`: Sets the number of days to pull issues for and the time of day at which to stop pulling issues. For instance, given the above parameters, the application will pull issues for the last 4 days and stop pulling issues at 12:00 PM of the 4th day.
 
-// #### Note: The max PAT expiration is 1 year! PAT created on 7/23/20 by Kamran Iqbal.
+### Building the application
+```
+npm install
+```
+
+```
+npm run build
+```
+
+### Running the application
+```
+npm start
+```
+
+### Adjusting test data options
+In each service (Stack Overflow, Azure DevOps, GitHub), located in the `getIssues()` method, there are data sets represented by both the `emptyData` and `testData` variables. Either of these can be edited and/or assigned as the mock data used to simulate the responses from the services. This is enabled via the `set-use-test-data` command line argument.

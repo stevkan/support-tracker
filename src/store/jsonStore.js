@@ -1,28 +1,29 @@
 import { Low } from 'lowdb';
 import { JSONFile, JSONFilePreset } from 'lowdb/node';
+import { Store } from 'storaje-db';
 import { issuesModel, loggingModel, settingsModel } from './models/models.js';
 
 class JsonStore {
   constructor() {
-    this.issuesDb = new Low(new JSONFile('./src/store/db/issues.json'), null);
-    this.loggingDb = new Low(new JSONFile('./src/store/db/logging.json'), null);
-    this.settingsDb = new Low(new JSONFile('./src/store/db/settings.json'), settingsModel);
+    this.issuesDb = new Store('./src/store/db/', 'issues.json', issuesModel);
+    this.loggingDb = new Store('./src/store/db/', 'logging.json', loggingModel);
+    this.settingsDb = new Store('./src/store/db/', 'settings.json', settingsModel);
   }
 
   async initializeDbs() {
     await this.issuesDb.read();
-    this.issuesDb.data = issuesModel;
-    await this.issuesDb.write();
+    // this.issuesDb.db = issuesModel;
+    // await this.issuesDb.write();
     console.log('Issues store initialized');
 
     await this.loggingDb.read();
-    this.loggingDb.data = loggingModel;
-    await this.loggingDb.write();
+    // this.loggingDb.db = loggingModel;
+    // await this.loggingDb.write();
     console.log('Logging store initialized');
     
     await this.settingsDb.read();
-    // this.settingsDb.data = settingsModel;
-    await this.settingsDb.write();
+    // this.settingsDb.db = settingsModel;
+    // await this.settingsDb.write();
     console.log('Settings store initialized');
   }
 };
