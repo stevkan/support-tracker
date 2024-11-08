@@ -31,8 +31,62 @@ try {
     program
       .name('support-tracker')
       .description('A CLI tool for tracking issues from Stack Overflow and GitHub.')
-      .version('2.1.0')
+      .version('2.1.1')
       .showSuggestionAfterError(true)
+      .usage('[command]')
+      .action(async (str, options) => {
+        if (options.args[0] === undefined) return
+        else if (options.args[0] === 'help' && options.args[1] === undefined) program.help();
+        else if (options.args[0] === 'help' && options.args[1] !== undefined) {
+          switch (options.args[1]) {
+            case 'get-params':
+              program.command('help')
+                .usage(' ')
+                .addHelpOption(false)
+                .argument('None', 'This command does not take any arguments.')
+                .addHelpText('after', chalk.green(`\nExample: npm start get-params`))
+                .help();
+              break;
+            case 'set-params':
+              program.command('help')
+                .usage('set-params')
+                .addHelpOption(false)
+                .argument('[number-of-days] [starting-hour]')
+                .addHelpText('after', chalk.green(`\nExample: npm start set-params 7 11`))
+                .help();
+              break;
+            case 'set-use-test-data':
+              program.command('help')
+                .usage('set-use-test-data')
+                .addHelpOption(false)
+                .argument('<<use-test-data>>', 'use test data flag')
+                .addHelpText('after', chalk.green(`\nExample: npm start set-use-test-data true`))
+                .help();
+              break;
+            case 'set-username':
+              program.command('help')
+                .usage('set-username')
+                .addHelpOption(false)
+                .argument('<<username>>', 'Azure DevOps username')
+                .addHelpText('after', chalk.green(`\nExample: npm start set-username <username>`))
+                .help();
+              break;
+            case 'set-pat':
+              program.command('help')
+                .usage('set-pat')
+                .addHelpOption(false)
+                .argument('<<pat>>', 'Azure DevOps personal access token')
+                .addHelpText('after', chalk.green(`\nExample: npm start set-pat <pat>`))
+                .action(() => {
+                  options.args[0] = '';
+                })
+                .help();
+              break;
+            default:
+              return;
+          }
+        };
+      });
 
     program.command('get-params')
       .description('Get the current parameters for the application.')
@@ -45,9 +99,9 @@ try {
           console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
           process.exit(0);
       })
-      .usage(' ')
+      .helpOption(false)
       .addHelpOption(false)
-      .addHelpText('after', chalk.green(`\nExample: support-tracker get-params`));
+      .helpCommand(false);
 
     program.command('set-params')
       .description('Set the number of days to query for issues.')
@@ -76,9 +130,9 @@ try {
         }
         process.exit(0);
       })
-      .usage('[number-of-days] [starting-hour]')
+      .helpOption(false)
       .addHelpOption(false)
-      .addHelpText('after', chalk.green(`\nExample: support-tracker set-params 7 11`));
+      .helpCommand(false);
 
     function isValidJSON(str) {
       try {
@@ -88,6 +142,7 @@ try {
         return false;
       }
     }
+    console.log('COMMANDS ', program.commands);
 
     program.command('set-use-test-data')
       .description("Enables/disables the use of test data. [Default: false]")
@@ -107,9 +162,9 @@ try {
         }
         process.exit(0);
       })
-      .usage('<use-test-data>')
+      .helpOption(false)
       .addHelpOption(false)
-      .addHelpText('after', chalk.green(`\nExample: support-tracker set-use-test-data true`));
+      .helpCommand(false);
 
     const prohibitedArgs = [undefined, null, 'undefined', 'null'];
     program.command('set-username')
@@ -131,9 +186,9 @@ try {
         }
         process.exit(0);
       })
-      .usage('<username>')
+      .helpOption(false)
       .addHelpOption(false)
-      .addHelpText('after', chalk.green(`\nExample: support-tracker set-username <username>`));
+      .helpCommand(false);
 
     program.command('set-pat')
       .description('Set the Azure DevOps personal access token.')
@@ -154,9 +209,9 @@ try {
         }
         process.exit(0);
       })
-      .usage('<pat>')
+      .helpOption(false)
       .addHelpOption(false)
-      .addHelpText('after', chalk.green(`\nExample: support-tracker set-pat <pat>`));
+      .helpCommand(false);
 
     program.parse();
 
@@ -208,17 +263,17 @@ try {
     await stackOverflowService.process().then(res => handleServiceResponse(res));
     console.groupEnd();
     
-    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    // await internalStackOverflowService.process().then(res => handleServiceResponse(res));
-    // console.groupEnd();
+    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+    await internalStackOverflowService.process().then(res => handleServiceResponse(res));
+    console.groupEnd();
     
-    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    // console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    // await gitHubService.process().then(res => handleServiceResponse(res));
-    // console.groupEnd();
+    console.group(chalk.blue.bold('\nProcessing GitHub...'))
+    await gitHubService.process().then(res => handleServiceResponse(res));
+    console.groupEnd();
 
     await new Promise(async (resolve) => {
       const endTime = new Date();
@@ -233,7 +288,7 @@ try {
       sleep(1500).then(() => {
         telemetryClient.flushClient();
         resolve();
-        process.exit();
+        process.exit(0);
       });
     });
   })();

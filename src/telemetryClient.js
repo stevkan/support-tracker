@@ -1,5 +1,6 @@
 import applicationInsights from 'applicationinsights'; //Dana
 import chalk from 'chalk';
+import { jsonStore } from './store/jsonStore.js';
 
 /**
  * Environment variables used to configure the application.
@@ -20,12 +21,20 @@ class TelemetryClient {
    * Sets the cloud role name for the telemetry context.
    */
   constructor() {
+    this.telemetry;
+    this.initializeTelemetry();
+  }
+
+  async initializeTelemetry() {
     applicationInsights.Configuration.setAutoCollectConsole(true, true);
     applicationInsights.Configuration.setAutoCollectRequests(true, true);applicationInsights.setup(APPINSIGHTS_INSTRUMENTATION_KEY).start();
+    const settings = await jsonStore.settingsDb.read();
 
-    console.info(chalk.hex('#8d8219')('[AppInsights] Telemetry client initialized'));
-    console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting console logs'));
-    console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting requests\n'));
+    if ((await settings).useTestData) {
+      console.info(chalk.hex('#8d8219')('[AppInsights] Telemetry client initialized'));
+      console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting console logs'));
+      console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting requests\n'));
+    }
     
     const telemetry = applicationInsights.defaultClient;
     telemetry.context.tags['ai.cloud.role'] = 'Support-Tracker-App';
@@ -37,8 +46,8 @@ class TelemetryClient {
    * @param {string} name - The name of the event to track.
    * @param {object} [measurements] - An optional object containing key-value pairs of measurements to associate with the event.
    */
-  trackEvent(name, measurements = null) {
-    this.telemetry.trackEvent({
+  async trackEvent(name, measurements = null) {
+    await this.telemetry.trackEvent({
       name: name,
       measurements: measurements
     });
