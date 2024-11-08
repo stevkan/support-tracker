@@ -142,7 +142,6 @@ try {
         return false;
       }
     }
-    console.log('COMMANDS ', program.commands);
 
     program.command('set-use-test-data')
       .description("Enables/disables the use of test data. [Default: false]")
