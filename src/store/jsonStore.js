@@ -11,20 +11,15 @@ class JsonStore {
   }
 
   async initializeDbs() {
+    const settings = await this.settingsDb.read();
     await this.issuesDb.read();
-    // this.issuesDb.db = issuesModel;
-    // await this.issuesDb.write();
-    console.log('Issues store initialized');
-
     await this.loggingDb.read();
-    // this.loggingDb.db = loggingModel;
-    // await this.loggingDb.write();
-    console.log('Logging store initialized');
-    
-    await this.settingsDb.read();
-    // this.settingsDb.db = settingsModel;
-    // await this.settingsDb.write();
-    console.log('Settings store initialized');
+
+    if (settings.useTestData) {
+      console.log('Settings store initialized');
+      console.log('Issues store initialized');
+      console.log('Logging store initialized');
+    }
   }
 };
 
