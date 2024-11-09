@@ -30,7 +30,7 @@ class TelemetryClient {
     applicationInsights.Configuration.setAutoCollectRequests(true, true);applicationInsights.setup(APPINSIGHTS_INSTRUMENTATION_KEY).start();
     const settings = await jsonStore.settingsDb.read();
 
-    if ((await settings).useTestData) {
+    if ((await settings).isVerbose) {
       console.info(chalk.hex('#8d8219')('[AppInsights] Telemetry client initialized'));
       console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting console logs'));
       console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting requests\n'));

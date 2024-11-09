@@ -8,9 +8,7 @@ import { jsonStore } from './store/jsonStore.js';
 import { TelemetryClient } from './telemetryClient.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
-import { generateIndexHtml } from './createIndex.js';
-import { ErrorHandler } from './errorHandler.js';
-import { issuesModel } from './store/models/issuesModel.js';
+import { generateIndexHtml } from './createIndex.js'
 
 dotenv.config(process.env);
 
@@ -20,6 +18,8 @@ const telemetryClient = new TelemetryClient();
 // Initialize the DevOps service.
 const devOpsService = new DevOpsService(telemetryClient);
 
+const issuesDb = await jsonStore.issuesDb;
+const issues = await jsonStore.issuesDb.read();
 const settingsDb = await jsonStore.settingsDb;
 const settings = await settingsDb.read();
 
@@ -63,6 +63,14 @@ try {
                 .addHelpText('after', chalk.green(`\nExample: npm start set-use-test-data true`))
                 .help();
               break;
+            case 'set-verbosity':
+              program.command('help')
+                .usage('set-verbosity')
+                .addHelpOption(false)
+                .argument('<<is-verbose>>', 'set verbosity flag')
+                .addHelpText('after', chalk.green(`\nExample: npm start set-verbosity true`))
+                .help();
+              break;
             case 'set-username':
               program.command('help')
                 .usage('set-username')
@@ -91,10 +99,11 @@ try {
     program.command('get-params')
       .description('Get the current parameters for the application.')
       .action(async (str, options) => {
-          const { azureDevOpsUsername, azureDevOpsPat, useTestData, numberOfDaysToQuery, startTimeOfQuery } = settings;
+          const { azureDevOpsUsername, azureDevOpsPat, isVerbose, useVerbosity, numberOfDaysToQuery, startTimeOfQuery } = settings;
           console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername }`));
           console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat }`));
-          console.log(chalk.green(`Use Test Data:`), chalk.white(`${ useTestData }`));
+          console.log(chalk.green(`Use Test Data:`), chalk.white(`${ isVerbose }`));
+          console.log(chalk.green(`Is Verbose:`), chalk.white(`${ useVerbosity }`));
           console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
           console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
           process.exit(0);
@@ -104,7 +113,7 @@ try {
       .helpCommand(false);
 
     program.command('set-params')
-      .description('Set the number of days to query for issues.')
+      .description('Set the number of days to query and the hour to query back to. [Default: 1 11]')
       .argument('[number-of-days]', 'number of days to query for issues', 1)
       .argument('[starting-hour]', 'hour of day to query for issues', 11)
       .action(async (numberOfDaysToQuery, startTimeOfQuery, options) => {
@@ -155,6 +164,29 @@ try {
         try {
           const willUseTestData = JSON.parse(useTestData) ?? (await settings).useTestData;
           await settingsDb.update('useTestData', willUseTestData);
+          await settingsDb.update('isVerbose', true);
+        } catch (error) {
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        process.exit(0);
+      })
+      .helpOption(false)
+      .addHelpOption(false)
+      .helpCommand(false);
+
+    program.command('set-verbosity')
+      .description("Sets the verbosity level for the application. [Default: false]")
+      .argument('<use-test-data>', 'use test data flag')
+      .action(async (isVerbose, options) => {
+        if (!isValidJSON(isVerbose)) {
+          const error = new InvalidArgumentError('Invalid or missing argument: <use-test-data>');
+          devOpsService.errorHandler(error);
+          process.exit(1);
+        }
+        try {
+          const willUseTestData = JSON.parse(isVerbose) ?? (await settings).isVerbose;
+          await settingsDb.update('isVerbose', willUseTestData);
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
@@ -215,7 +247,9 @@ try {
     program.parse();
 
     const args = process.argv.slice(2);
-    if ( args.length === 0 && (await settings).useTestData === true) console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'));
+    if ( args.length === 0 && (await settings).useTestData === true) {
+      console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'))
+    };
 
     let queryDate = new Date();
     queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
@@ -250,8 +284,7 @@ try {
     console.info(chalk.green.bold(`Starting Processes: ${ localStartTime }`));
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
-    // jsonStore.issuesDb.db.index.startTime = localStartTime;
-    await jsonStore.issuesDb.update('index.startTime', localStartTime);
+    await issuesDb.update('index.startTime', localStartTime);
   
     /**
      * Processes the data from the StackOverflow and GitHub services.
@@ -281,8 +314,8 @@ try {
       console.info(chalk.green.bold(`\nFinished Processes: ${ localEndTime }`));
       telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
-      await jsonStore.issuesDb.update('index.endTime', localEndTime);
-      // await generateIndexHtml(jsonStore.issuesDb.db);
+      await issuesDb.update('index.endTime', localEndTime);
+      await generateIndexHtml(issues);
 
       sleep(1500).then(() => {
         telemetryClient.flushClient();
