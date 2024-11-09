@@ -15,7 +15,7 @@ class JsonStore {
     await this.issuesDb.read();
     await this.loggingDb.read();
 
-    if (settings.useTestData) {
+    if (settings.isVerbose) {
       console.log('Settings store initialized');
       console.log('Issues store initialized');
       console.log('Logging store initialized');
