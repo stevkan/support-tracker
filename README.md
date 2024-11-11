@@ -45,7 +45,7 @@
 ### Environment Variables
 | Variable Name | Description |
 | --- | --- |
-| `AZURE_DEVOPS_ORG`  | Azure DevOps Organization |
+| `AZURE_DEVOPS_ORG` | Azure DevOps Organization |
 | `AZURE_DEVOPS_PROJECT` | Azure DevOps Project |
 | `AZURE_DEVOPS_API_VERSION` | Azure DevOps API Version |
 | `APPINSIGHTS_INSTRUMENTATION_KEY` | Application Insights Instrumentation Key |
@@ -61,6 +61,7 @@
 | `get-params` | Get the current parameters for the application |
 | `set-params` | Set the current parameters for the application |
 | `set-use-test-data` | Enables/disables the use of test data [Default: false] |
+| `set-verbosity` | Enables/disables verbose logging [Default: false] |
 | `set-username` | Set the Azure DevOps username |
 | `set-pat` | Set the Azure DevOps Personal Access Token |
 
