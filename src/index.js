@@ -298,15 +298,15 @@ try {
     
     console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    // await internalStackOverflowService.process().then(res => handleServiceResponse(res));
-    // console.groupEnd();
+    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+    await internalStackOverflowService.process().then(res => handleServiceResponse(res));
+    console.groupEnd();
     
-    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    // console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    // await gitHubService.process().then(res => handleServiceResponse(res));
-    // console.groupEnd();
+    console.group(chalk.blue.bold('\nProcessing GitHub...'))
+    await gitHubService.process().then(res => handleServiceResponse(res));
+    console.groupEnd();
 
     await new Promise(async (resolve) => {
       const endTime = new Date();
