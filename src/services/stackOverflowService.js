@@ -299,12 +299,30 @@ class StackOverflowService extends DevOpsService {
       configHeaders = config.headers
     }
 
+    let userAgent = undefined;
+    if (this.tags.includes('bot-framework')) {
+      userAgent = 'InternalStackOverflowService';
+    }
+    else {
+      userAgent = 'StackOverflowService';
+    }
+    
     const headers = {
       ...configHeaders,
-      'User-Agent': 'StackOverflowService'
+      'User-Agent': userAgent
     }
     const urlPath = url ? url : 'https://api.stackexchange.com/2.3/questions';
-    const response = await axios.get(urlPath, { params, headers });
+    const response = await axios.get(urlPath, { params, headers })
+      .then((resp) => {
+        return resp;
+      })
+      .catch(async (error) => {
+        if (error.response.status === 429) {
+          await sleep(5100);
+          return error.response;
+        }
+        return error;
+      });
     return response;
   }
 
@@ -338,7 +356,7 @@ class StackOverflowService extends DevOpsService {
    */
   async getIssues(tagged) {
     console.log('Fetching ' + chalk.yellow(tagged) + ' tagged posts...');
-    await sleep(1000);
+    await sleep(1500);
 
     const emptyData = [];
     const testData = [

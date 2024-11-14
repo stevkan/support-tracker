@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { InvalidArgumentError } from 'commander';
 
 import { jsonStore } from './store/jsonStore.js';
+import { set } from '@dotenvx/dotenvx';
 
 /**
  * Represents an error handler.
@@ -22,6 +23,10 @@ class ErrorHandler {
  * @param { object } telemetry - An object with a `trackException` method to send telemetry data.
  */
   async errorHandler(error, serviceName) {
+    if (error.response.status === 429) {
+      console.log('429 error');
+      return error.response
+    }
     const { status, message, stack } = error;
     if (error instanceof axios.AxiosError) {
       console.error(chalk.red(`API error in ${ serviceName }: ${ stack }`));
@@ -43,7 +48,7 @@ class ErrorHandler {
       error.name = 'Unknown';
     }
     
-    console.log('logs ', await this.logging);
+    // console.log('logs ', await this.logging);
     const logs = await this.logging;
     logs.push({ stack });
     // await jsonStore.loggingDb.update(null, logs);
@@ -56,8 +61,6 @@ class ErrorHandler {
     });
     
     return error;
-    
-    // process.exit(1);
   };
 }
 

@@ -18,10 +18,9 @@ const telemetryClient = new TelemetryClient();
 // Initialize the DevOps service.
 const devOpsService = new DevOpsService(telemetryClient);
 
-const issuesDb = await jsonStore.issuesDb;
-const issues = await jsonStore.issuesDb.read();
-const settingsDb = await jsonStore.settingsDb;
-const settings = await settingsDb.read();
+const issuesDb = jsonStore.issuesDb;
+const settingsDb = jsonStore.settingsDb;
+const settings = settingsDb.read();
 
 const program = new Command();
 
@@ -251,6 +250,8 @@ try {
       console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'))
     };
 
+    
+    const issues = await jsonStore.issuesDb.read();
     let queryDate = new Date();
     queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
     const timeOfDayToQueryFrom = Number((await settings).startTimeOfQuery);
@@ -297,15 +298,15 @@ try {
     
     console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    await internalStackOverflowService.process().then(res => handleServiceResponse(res));
-    console.groupEnd();
+    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+    // await internalStackOverflowService.process().then(res => handleServiceResponse(res));
+    // console.groupEnd();
     
-    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    await gitHubService.process().then(res => handleServiceResponse(res));
-    console.groupEnd();
+    // console.group(chalk.blue.bold('\nProcessing GitHub...'))
+    // await gitHubService.process().then(res => handleServiceResponse(res));
+    // console.groupEnd();
 
     await new Promise(async (resolve) => {
       const endTime = new Date();
