@@ -250,6 +250,10 @@ try {
       console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'))
     };
 
+    if ((await settings).azureDevOpsUsername === undefined || (await settings).azureDevOpsUsername === "" || (await settings).azureDevOpsPat === undefined || (await settings).azureDevOpsPat === "") {
+      console.error(chalk.red.bold('\nAzure DevOps username and PAT are required.'));
+      process.exit(1);
+    }
     
     const issues = await jsonStore.issuesDb.read();
     let queryDate = new Date();

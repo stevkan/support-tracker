@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { InvalidArgumentError } from 'commander';
 
 import { jsonStore } from './store/jsonStore.js';
-import { set } from '@dotenvx/dotenvx';
 
 /**
  * Represents an error handler.
@@ -23,7 +22,7 @@ class ErrorHandler {
  * @param { object } telemetry - An object with a `trackException` method to send telemetry data.
  */
   async errorHandler(error, serviceName) {
-    if (error.response.status === 429) {
+    if (error.response && error.response.status && error.reponse.status === 429) {
       console.log('429 error');
       return error.response
     }

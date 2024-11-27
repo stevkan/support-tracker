@@ -49,7 +49,9 @@ class GitHubService extends DevOpsService {
     this.source = source;
     this.lastRun = lastRun;
     this.telemetryClient = telemetryClient;
-    this.settings = jsonStore.settingsDb.read()
+
+    const settingsDb = jsonStore.settingsDb;
+    this.settings = settingsDb.read();
   }
 
   /**
@@ -65,6 +67,7 @@ class GitHubService extends DevOpsService {
    */
   async process() {
     const existingIssuesDetails = [];
+    let existingIssuesCount = 0;
     const unassignedIssues = [];
     const items = [];
     let issues = [];
@@ -142,10 +145,10 @@ class GitHubService extends DevOpsService {
 
       console.group(chalk.blue('GitHub Results:'));
       console.log('Issues Found:', issues.length);
-      // for (const issue of issues) {
-      //   console.debug('New Issue:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-      // }
-      console.table(issues, ['Custom.IssueID', 'System.Title']);
+
+      if ((await this.settings).isVerbose === true) {
+        console.table(issues, ['Custom.IssueID', 'System.Title']);
+      }
       
       await jsonStore.issuesDb.update('index.github.found.issues', issues);
       await jsonStore.issuesDb.update('index.github.found.count', issues.length);
@@ -173,7 +176,6 @@ class GitHubService extends DevOpsService {
          * @returns {Promise<Object>} - The response from the DevOps API containing the existing work item details, if any.
          */
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID']);
-        // console.log('Existing Issues Response:', existingIssuesResponse);
           
         if (existingIssuesResponse instanceof AxiosError) {
           console.error(chalk.red('Error:', existingIssuesResponse.isAxiosError));
@@ -181,11 +183,11 @@ class GitHubService extends DevOpsService {
         }
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         else if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length === 0) {
-          // console.debug('No Issue Exists: ', existingIssuesResponse.data.workItems.length);
           continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         else if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length > 0) {
+          existingIssuesCount += existingIssuesResponse.data.workItems.length;
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
@@ -210,6 +212,15 @@ class GitHubService extends DevOpsService {
           }
         }
       };
+      if (existingIssuesCount === 0) {
+        console.log('Possible Matching Issues:', 0);
+      }
+      else if (existingIssuesCount > 0 && (await this.settings).isVerbose === true) {
+        console.log('Possible Matching Issues:', existingIssuesCount);
+      }
+      else if (existingIssuesCount > 0 && (await this.settings).isVerbose === false) {
+        console.log('Possible Matching Issues:', existingIssuesCount - 1);
+      }
     } catch (error) {
       return await this.errorHandler(error, 'StackOverflowService');
       // throw error; // Re-throw the error if you want calling code to handle it
@@ -220,7 +231,10 @@ class GitHubService extends DevOpsService {
         console.log(chalk.red('No Matching Issues Exist\n'));
       }
       else {
-        console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+        
+        if ((await this.settings).isVerbose === true) {
+          console.table(existingIssuesDetails, ['id', 'Custom.IssueID', 'System.Title']);
+        }
 
         await jsonStore.issuesDb.update('index.github.devOps', existingIssuesDetails);
   
@@ -252,12 +266,14 @@ class GitHubService extends DevOpsService {
       return await this.errorHandler(error, 'StackOverflowService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
-    
+
     try {
       console.group(chalk.rgb(19, 60, 124)('DevOps Results'));
       console.log('Issues New to DevOps:', unassignedIssues.length);
 
-      console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      if ((await this.settings).isVerbose === true) {
+        console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      }
       console.groupEnd();
       
       await jsonStore.issuesDb.update('index.github.newIssues.issues', unassignedIssues);
