@@ -1,6 +1,6 @@
 {
   "name": "support-tracker",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "",
   "type": "module",
   "main": "dist/index.js",

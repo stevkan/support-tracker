@@ -34,7 +34,7 @@ class InternalStackOverflowService extends StackOverflowService {
    */
   async getIssues(tagged) {
     console.log('Fetching ' + chalk.yellow(tagged) + ' tagged posts...');
-    await sleep(1000);
+    await sleep(1500);
 
     const emptyData = [];
     const testData = [
