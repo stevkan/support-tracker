@@ -73,10 +73,12 @@ class StackOverflowService extends DevOpsService {
    * @returns {Promise<{ error, { status: number, message: string } }>} - An object containing the HTTP status code and a message indicating the result of the operation.
    */
   async process() {
+    const possibleDevOpsMatches = [];
+    const unassignedIssues = [];
+    const items = [];
+    let issues = [];
+    let stackOverflowIndicator = chalk.rgb(244, 128, 36)('Stack Overflow Results:');
     try {
-      const possibleDevOpsMatches = [];
-      const unassignedIssues = [];
-      let stackOverflowIndicator = chalk.rgb(244, 128, 36)('Stack Overflow Results:');
 
       /**
        * Fetches questions from Stack Overflow for the provided tags and returns the results as a single array.
@@ -91,7 +93,7 @@ class StackOverflowService extends DevOpsService {
       if (this.tags.includes('bot-framework')) {
         stackOverflowIndicator = chalk.rgb(255, 176, 37)('Internal Stack Overflow Results:');
       }
-      const items = [];
+
       for (const task of queue) {
         const result = await task();
         if (result.length === 0) {
@@ -110,6 +112,12 @@ class StackOverflowService extends DevOpsService {
         };
       }
       console.groupEnd();
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
+
+    try {
       const uniqueIssues = removeDuplicates(items, ({ question_id }) => question_id);
 
       /**
@@ -125,7 +133,7 @@ class StackOverflowService extends DevOpsService {
        * @param {Object[]} uniqueIssues - An array of unique Stack Overflow issues.
        * @returns {Object[]} - An array of objects representing the Stack Overflow issues in a format suitable for adding to a DevOps system.
        */
-      const issues = uniqueIssues.map(({
+      issues = uniqueIssues.map(({
         body,
         title,
         question_id,
@@ -154,7 +162,12 @@ class StackOverflowService extends DevOpsService {
       }
 
       console.groupEnd();
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
 
+    try {
       console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
 
       // Iterates over the Stack Overflow issues to check if they already exist in the DevOps system.
@@ -205,7 +218,12 @@ class StackOverflowService extends DevOpsService {
           }
         }
       };
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
 
+    try {
       if (possibleDevOpsMatches === undefined || possibleDevOpsMatches.length === 0) {
         console.log(chalk.red('No Matching Issues Exist\n'));
       }
@@ -224,8 +242,13 @@ class StackOverflowService extends DevOpsService {
         for (const issue of issues) {
           const exists = possibleDevOpsMatches.map(existingIssue => existingIssue['Custom.IssueID'] === issue['Custom.IssueID'] && existingIssue['System.Title'] === issue['System.Title']).includes(true);
           if (exists && unassignedIssues.length > 0) {
-            const index = unassignedIssues.findIndex(unassignedIssue => unassignedIssue['Custom.IssueID'] === issue['Custom.IssueID'] && unassignedIssue['System.Title'] === issue['System.Title']).status = 'New';
-            unassignedIssues.splice(index, 1);
+            const index = unassignedIssues.findIndex(unassignedIssue => unassignedIssue['Custom.IssueID'] === issue['Custom.IssueID'] && unassignedIssue['System.Title'] === issue['System.Title']); //.status = 'New';
+            if (index !== -1) {
+              unassignedIssues[index].status = 'New';
+            }
+            else {
+              unassignedIssues.push({ 'Custom.IssueID': issue['Custom.IssueID'], 'System.Title': issue['System.Title'], 'status': 'New' });
+            }
           }
         }
       }
@@ -240,7 +263,12 @@ class StackOverflowService extends DevOpsService {
           message: 'No new posts to add' };
       }
       console.groupEnd();
-      
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
+     
+    try {
       console.group(chalk.rgb(19, 60, 124)('DevOps Results:'));
       console.log('Posts New to DevOps: ', unassignedIssues.length);
 
@@ -356,7 +384,7 @@ class StackOverflowService extends DevOpsService {
    */
   async getIssues(tagged) {
     console.log('Fetching ' + chalk.yellow(tagged) + ' tagged posts...');
-    await sleep(1500);
+    await sleep(1000);
 
     const emptyData = [];
     const testData = [
