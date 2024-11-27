@@ -57,7 +57,8 @@ class StackOverflowService extends DevOpsService {
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
 
-    this.settings = jsonStore.settingsDb.read();
+    const settingsDb = jsonStore.settingsDb;
+    this.settings = settingsDb.read();
   }
 
   /**
@@ -74,6 +75,7 @@ class StackOverflowService extends DevOpsService {
    */
   async process() {
     const possibleDevOpsMatches = [];
+    let existingIssuesCount = 0;
     const unassignedIssues = [];
     const items = [];
     let issues = [];
@@ -147,10 +149,10 @@ class StackOverflowService extends DevOpsService {
 
       console.group(chalk.blue(stackOverflowIndicator));
       console.log('Posts Found:', issues.length);
-      // for (const issue of issues) {
-      //   console.debug('Post:', { 'IssueID': issue['Custom.IssueID'], 'Title': issue['System.Title'] });
-      // }
-      console.table(issues, ['Custom.IssueID', 'System.Title']);
+
+      if ((await this.settings).isVerbose === true) {
+        console.table(issues, ['Custom.IssueID', 'System.Title']);
+      }
 
       if (this.tags.includes('bot-framework')) {
         await jsonStore.issuesDb.update('index.internalStackOverflow.found.issues', issues);
@@ -168,7 +170,7 @@ class StackOverflowService extends DevOpsService {
     }
 
     try {
-      console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
+      console.groupCollapsed(chalk.rgb(19, 60, 124)('DevOps Match Results:'));
 
       // Iterates over the Stack Overflow issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
@@ -184,15 +186,14 @@ class StackOverflowService extends DevOpsService {
          * @returns {Promise<Object>} - The response from the DevOps API containing the existing work item details, if any.
          */
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID']);
-
         // If no existing issue is found, the issue is added to the `unassignedIssues` array.
         if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length === 0) {
-          // console.debug('No Issue Exists:', existingIssuesResponse.data.workItems.length);
           unassignedIssues.push(issue);
           // continue;
         }
         // If a possible matching issue is found, its details are added to the `existingIssueDetails` array.
         if (existingIssuesResponse.status === axios.HttpStatusCode.Ok && existingIssuesResponse.data.workItems.length > 0) {
+          existingIssuesCount += existingIssuesResponse.data.workItems.length;
           const existingIssues = existingIssuesResponse.data.workItems;
 
           for (const existingIssue of existingIssues) {
@@ -218,6 +219,15 @@ class StackOverflowService extends DevOpsService {
           }
         }
       };
+      if (existingIssuesCount === 0) {
+        console.log('Possible Matching Issues:', 0);
+      }
+      else if (existingIssuesCount > 0 && (await this.settings).isVerbose === true) {
+        console.log('Possible Matching Issues:', existingIssuesCount);
+      }
+      else if (existingIssuesCount > 0 && (await this.settings).isVerbose === false) {
+        console.log('Possible Matching Issues:', existingIssuesCount - 1);
+      }
     } catch (error) {
       return await this.errorHandler(error, 'StackOverflowService');
       // throw error; // Re-throw the error if you want calling code to handle it
@@ -228,7 +238,10 @@ class StackOverflowService extends DevOpsService {
         console.log(chalk.red('No Matching Issues Exist\n'));
       }
       else {
-        console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
+
+        if ((await this.settings).isVerbose === true) {
+          console.table(possibleDevOpsMatches, ['id', 'Custom.IssueID', 'System.Title']);
+        }
 
         if (this.tags.includes('bot-framework')) {
           await jsonStore.issuesDb.update('index.internalStackOverflow.devOps', possibleDevOpsMatches);
@@ -272,7 +285,9 @@ class StackOverflowService extends DevOpsService {
       console.group(chalk.rgb(19, 60, 124)('DevOps Results:'));
       console.log('Posts New to DevOps: ', unassignedIssues.length);
 
-      console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      if ((await this.settings).isVerbose === true) {
+        console.table(unassignedIssues, ['Custom.IssueID', 'System.Title']);
+      }
       console.groupEnd();
 
       if (this.tags.includes('bot-framework')) {

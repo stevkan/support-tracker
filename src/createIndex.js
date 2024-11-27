@@ -3,6 +3,7 @@ import path from 'path';
 import open from 'open';
 
 import { jsonStore } from './store/jsonStore.js';
+import { sleep } from './utils.js';
 
 async function generateIndexHtml(jsonData) {
   const settings = await jsonStore.settingsDb.read();
@@ -280,6 +281,7 @@ async function generateIndexHtml(jsonData) {
         console.log('index.html created successfully');
         
         // After writing the file, open it in the default browser
+        sleep(500);
         await open(indexPath);
         console.log('index.html has been opened in the default browser');
       }
