@@ -64,9 +64,11 @@ class GitHubService extends DevOpsService {
    *   - If an error occurs, the error is handled and the status code and message are returned.
    */
   async process() {
+    const existingIssuesDetails = [];
+    const unassignedIssues = [];
+    const items = [];
+    let issues = [];
     try {
-      const existingIssuesDetails = [];
-      const unassignedIssues = [];
 
       /**
        * Fetches issues from the configured GitHub repositories and stores them in an array.
@@ -77,7 +79,6 @@ class GitHubService extends DevOpsService {
        */
       // const items = await Promise.all(this.repositories.map(async repository => await this.getIssues(repository)));
       const queue = this.repositories.map(repository => async () => await this.getIssues(repository));
-      const items = [];
       for (const task of queue) {
         const result = await task();
         if (result.length === 0) {
@@ -96,6 +97,12 @@ class GitHubService extends DevOpsService {
         };
       }
       console.groupEnd();
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
+
+    try {
       const uniqueIssues = removeDuplicates(items, ({ node: { url }}) => url);
 
       /**
@@ -113,7 +120,7 @@ class GitHubService extends DevOpsService {
        * @param {Array<{ node: { number: number, labels: { nodes: Array<{ name: string }>}, repository: { name: string }, title: string, url: string }}}>} uniqueIssues - The array of unique GitHub issues.
        * @returns {Array<Object>} - An array of objects containing the issue details in the format required by the DevOps system.
        */
-      const issues = uniqueIssues.map(({ node: { 
+      issues = uniqueIssues.map(({ node: { 
         number,
         labels: { 
             nodes: labels
@@ -144,7 +151,12 @@ class GitHubService extends DevOpsService {
       await jsonStore.issuesDb.update('index.github.found.count', issues.length);
 
       console.groupEnd();
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
 
+    try {
       console.groupCollapsed(chalk.rgb(19, 60, 124)('Possible Matching DevOps Issues:'));
       
       // Iterates over the GitHub issues to check if they already exist in the DevOps system.
@@ -198,7 +210,12 @@ class GitHubService extends DevOpsService {
           }
         }
       };
-      
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
+     
+    try {
       if (existingIssuesDetails === undefined || existingIssuesDetails.length === 0) {
         console.log(chalk.red('No Matching Issues Exist\n'));
       }
@@ -231,7 +248,12 @@ class GitHubService extends DevOpsService {
         };
       }
       console.groupEnd();
-      
+    } catch (error) {
+      return await this.errorHandler(error, 'StackOverflowService');
+      // throw error; // Re-throw the error if you want calling code to handle it
+    }
+    
+    try {
       console.group(chalk.rgb(19, 60, 124)('DevOps Results'));
       console.log('Issues New to DevOps:', unassignedIssues.length);
 
