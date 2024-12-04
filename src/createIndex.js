@@ -6,7 +6,16 @@ import { jsonStore } from './store/jsonStore.js';
 import { sleep } from './utils.js';
 
 async function generateIndexHtml(jsonData) {
-  const settings = await jsonStore.settingsDb.read();
+  const indexPath = path.join(process.cwd(), 'index.html');
+
+  // Delete the index.html file located following the `indexPath` path
+  try {
+    await fs.unlink(indexPath);
+    console.log('index.html deleted successfully');
+  } catch (error) {
+    console.error('Failed to delete index.html:', error);
+  }
+
   const {
     startTime,
     endTime,
@@ -274,15 +283,10 @@ async function generateIndexHtml(jsonData) {
 </html>
     `;
 
-    const indexPath = path.join(process.cwd(), 'index.html');
     try {
       await fs.writeFile(indexPath, htmlContent);
       console.log('index.html created successfully');
-      
-      // After writing the file, open it in the default browser
-      await sleep(500);
-      await open(indexPath);
-      console.log('index.html has been opened in the default browser');
+      return { indexPath };
     } catch {
         console.error('Failed to create/update index.html');
     }
