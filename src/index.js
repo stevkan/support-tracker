@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import chalk from 'chalk';
 import axios from 'axios';
 import { Command, InvalidArgumentError } from 'commander';
+import openBrowser from 'open-web-browser';
 
 import { sleep } from './utils.js';
 import { jsonStore } from './store/jsonStore.js';
@@ -320,13 +321,18 @@ try {
       telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
       await issuesDb.update('index.endTime', localEndTime);
-      await generateIndexHtml(issues);
+      const { indexPath } = await generateIndexHtml(issues);
 
-      sleep(1500).then(() => {
-        telemetryClient.flushClient();
-        resolve();
-        process.exit(0);
-      });
+      if (indexPath) {
+        const state = await openBrowser(indexPath)
+        if (state) {
+          await sleep(3000).then(() => {
+            telemetryClient.flushClient();
+            resolve();
+            process.exit(0);
+          })
+        }
+      }
     });
   })();
 } catch (error) {
