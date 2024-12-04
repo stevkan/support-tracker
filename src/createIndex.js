@@ -276,16 +276,13 @@ async function generateIndexHtml(jsonData) {
 
     const indexPath = path.join(process.cwd(), 'index.html');
     try {
-      if (settings.isVerbose) {
-        await fs.writeFile(indexPath, htmlContent);
-        console.log('index.html created successfully');
-        
-        // After writing the file, open it in the default browser
-        sleep(500);
-        await open(indexPath);
-        console.log('index.html has been opened in the default browser');
-      }
-        
+      await fs.writeFile(indexPath, htmlContent);
+      console.log('index.html created successfully');
+      
+      // After writing the file, open it in the default browser
+      await sleep(500);
+      await open(indexPath);
+      console.log('index.html has been opened in the default browser');
     } catch {
         console.error('Failed to create/update index.html');
     }
