@@ -10,6 +10,7 @@ import { TelemetryClient } from './telemetryClient.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
 import { generateIndexHtml } from './createIndex.js'
+import { issuesModel } from './store/models/issuesModel.js';
 
 dotenv.config(process.env);
 
@@ -256,7 +257,6 @@ try {
       process.exit(1);
     }
     
-    const issues = await jsonStore.issuesDb.read();
     let queryDate = new Date();
     queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
     const timeOfDayToQueryFrom = Number((await settings).startTimeOfQuery);
@@ -289,7 +289,7 @@ try {
     const localStartTime = startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
     console.info(chalk.green.bold(`Starting Processes: ${ localStartTime }`));
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
-
+    await issuesDb.write(issuesModel);
     await issuesDb.update('index.startTime', localStartTime);
   
     /**
@@ -298,19 +298,34 @@ try {
      * This code is part of the main application logic that orchestrates the data retrieval and processing from various services.
      */
     console.group(chalk.rgb(244, 128, 36).bold('\nProcessing StackOverflow...'))
-    await stackOverflowService.process().then(res => handleServiceResponse(res));
+    await stackOverflowService.process()
+      .then(res => {
+        const response = devOpsService.handleServiceResponse(res, 'StackOverflowService');
+        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+      })
+      .catch(err => devOpsService.handleServiceResponse(err));
     console.groupEnd();
     
     console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
     console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    await internalStackOverflowService.process().then(res => handleServiceResponse(res));
+    await internalStackOverflowService.process()
+      .then(res => {
+        const { message } = devOpsService.handleServiceResponse(res, 'InternalStackOverflowService');
+        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+      })
+      .catch(err => devOpsService.handleServiceResponse(err));
     console.groupEnd();
     
     console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
     console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    await gitHubService.process().then(res => handleServiceResponse(res));
+    await gitHubService.process()
+      .then(res => {
+        const { message } = devOpsService.handleServiceResponse(res, 'GitHubService');
+        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+      })
+      .catch(err => devOpsService.handleServiceResponse(err));
     console.groupEnd();
 
     await new Promise(async (resolve) => {
@@ -321,6 +336,7 @@ try {
       telemetryClient.trackEvent({ name: "Finished Processes", measurements: { date: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
 
       await issuesDb.update('index.endTime', localEndTime);
+      const issues = await jsonStore.issuesDb.read();
       const { indexPath } = await generateIndexHtml(issues);
 
       if (indexPath) {
@@ -338,42 +354,3 @@ try {
 } catch (error) {
   devOpsService.errorHandler(error);
 }
-
-const handleServiceResponse = (res) => {
-  if (res instanceof axios.AxiosError || res instanceof Error) {
-    const error = res;
-    const statusHeader = chalk.green.italic('Process status: ');
-    switch (error.status) {
-      case 400:
-        console.error(statusHeader + chalk.red.italic(`Bad request in ${ error.name }: Received ${ error.status }. Check your parameters.`));
-        break;
-      case 401:
-        console.error(statusHeader + chalk.red.italic(`Unauthorized in ${ error.name }: Received ${ error.status }. Check your credentials.`));
-        break;
-      case 403:
-        console.error(statusHeader + chalk.red.italic(`Forbidden in ${ error.name }: Received ${ error.status }. Check your permissions.`));
-        break;
-      case 404:
-        console.error(statusHeader + chalk.red.italic(`Not found in ${ error.name }: Received ${ error.status }. Check your URL.`));
-        break;
-      case 429:
-        console.error(statusHeader + chalk.red.italic(`Too many requests in ${ error.name }: Received ${ error.status }. Check your rate limits.`));
-        break;
-      case 500:
-        console.error(statusHeader + chalk.red.italic(`Internal server error in ${ error.name }: Received ${ error.status }. Check the server.`));
-        break;
-      default:
-        console.error(statusHeader + chalk.red.italic(`Service returned an unexpected error: ${error.message}. Check the server.`));
-        break;
-    };
-  }
-  switch (res.status) {
-    case 200:
-    case 204:
-      if (!!res.message) {
-        console.warn(chalk.green.italic('Process status:'), 
-          chalk.red.italic(res.message));
-      }
-      break;
-  }
-};

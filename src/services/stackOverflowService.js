@@ -461,15 +461,14 @@ class StackOverflowService extends DevOpsService {
     const params = this.buildRequestParams(tagged, this.lastRun);
 
     if (!!(await this.settings).useTestData) return await testData;
-    return await this.fetchStackOverflowIssues(params)
-      .then(response => {
-        this.logAndTrackResponse(response.data.items);
-        return response.data.items;
-      })
-      .catch(error => {
-        this.errorHandler(error, 'StackOverflowService');
-        throw error;
-      });
+    const response = this.handleServiceResponse(await this.fetchStackOverflowIssues(params), 'StackOverflowService')
+    if (await response === typeof Error) {
+      const error = await response;
+      throw error;
+    }
+
+    this.logAndTrackResponse(response.data.items);
+    return response.data.items;
   }
 
   /**

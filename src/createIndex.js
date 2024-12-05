@@ -1,6 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import open from 'open';
 
 import { jsonStore } from './store/jsonStore.js';
 import { sleep } from './utils.js';
@@ -286,6 +285,7 @@ async function generateIndexHtml(jsonData) {
     try {
       await fs.writeFile(indexPath, htmlContent);
       console.log('index.html created successfully');
+      sleep(1000);
       return { indexPath };
     } catch {
         console.error('Failed to create/update index.html');

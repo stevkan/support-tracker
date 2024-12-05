@@ -101,7 +101,7 @@ class GitHubService extends DevOpsService {
       }
       console.groupEnd();
     } catch (error) {
-      return await this.errorHandler(error, 'StackOverflowService');
+      return await this.errorHandler(error, 'GitHubService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
 
@@ -155,7 +155,7 @@ class GitHubService extends DevOpsService {
 
       console.groupEnd();
     } catch (error) {
-      return await this.errorHandler(error, 'StackOverflowService');
+      return await this.errorHandler(error, 'GitHubService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
 
@@ -222,7 +222,7 @@ class GitHubService extends DevOpsService {
         console.log('Possible Matching Issues:', existingIssuesCount - 1);
       }
     } catch (error) {
-      return await this.errorHandler(error, 'StackOverflowService');
+      return await this.errorHandler(error, 'GitHubService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
      
@@ -263,7 +263,7 @@ class GitHubService extends DevOpsService {
       }
       console.groupEnd();
     } catch (error) {
-      return await this.errorHandler(error, 'StackOverflowService');
+      return await this.errorHandler(error, 'GitHubService');
       // throw error; // Re-throw the error if you want calling code to handle it
     }
 
@@ -403,7 +403,15 @@ class GitHubService extends DevOpsService {
   async getIssuesWithLabels(org, repo, labels, ignoreLabels, config) {
       return labels.reduce(async (result, label) => {
         const query = this.buildQuery(org, repo, label, ignoreLabels);
-        const issues = await this.fetchIssues(config, query);
+        const response = this.handleServiceResponse(await this.fetchIssues(config, query), 'GitHubService');
+
+        if (await response === typeof Error) {
+          const error = await response;
+          throw error;
+        }
+
+        const { data: { data: { search: { edges: issues }}}} = response;
+        this.logAndTrackResponse(issues);
         return this.filterIssuesByLabelCreationTime(issues, label, result);
       }, []);
   }
@@ -419,7 +427,16 @@ class GitHubService extends DevOpsService {
    */
   async getIssuesWithoutLabels(org, repo, ignoreLabels, config) {
     const query = this.buildQuery(org, repo, null, ignoreLabels);
-    const { data: { data: { search: { edges: issues }}}} = await axios({...config, data: query });
+    // const { data: { data: { search: { edges: issues }}}} = await axios({...config, data: query });
+    const response = this.handleServiceResponse(await this.fetchIssues(config, query), 'GitHubService');
+
+    if (await response === typeof Error) {
+      const error = await response;
+      throw error;
+    }
+
+    const { data: { data: { search: { edges: issues }}}} = response;
+    this.logAndTrackResponse(issues);
     return issues;
   }
 
@@ -448,8 +465,8 @@ class GitHubService extends DevOpsService {
    * @returns {Promise<Object[]>} - An array of GitHub issue objects.
    */
   async fetchIssues(config, query) {
-    const { data: { data: { search: { edges: issues }}}} = await axios({...config, data: query });
-    return issues;
+    // const { data: { data: { search: { edges: issues }}}} = await axios({...config, data: query });
+    return await axios({...config, data: query });
   }
 
   /**

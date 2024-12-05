@@ -72,16 +72,14 @@ class InternalStackOverflowService extends StackOverflowService {
     };
 
     if (!!(await this.settings).useTestData) return await testData;
-    return await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.3/questions', headers })
-      .then(response => {
-        this.logAndTrackResponse(response.data.items);
-        response.data.items.constructor.source = 'InternalStackOverflowService';
-        return response.data.items;
-      })
-      .catch(error => {
-        this.errorHandler(error, 'InternalStackOverflowService');
-        throw error;
-      });
+    const response = this.handleServiceResponse(await this.fetchStackOverflowIssues(params, { url: 'https://stackoverflow.microsoft.com/api/2.3/questions', headers }), 'InternalStackOverflowService')
+    if (await response === typeof Error) {
+      const error = await response;
+      throw error;
+    }
+
+    this.logAndTrackResponse(response.data.items);
+    return response.data.items;
   }
 
   /**
