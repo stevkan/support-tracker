@@ -71,14 +71,15 @@ class DevOpsService extends ErrorHandler {
         data: JSON.stringify(data),
       }
 
-      const response = this.handleServiceResponse(axios.request(config), 'DevOpsService');
+      var response = this.handleServiceResponse(axios.request(config), 'DevOpsService');
       if (await response === typeof Error) {
         const error = await response;
         throw error;
       }
+
       this.logAndTrackResponse(await Object.create(await response).data, 'addIssues');
-      return await response;
     }
+    return await response;
   }
 
   /**

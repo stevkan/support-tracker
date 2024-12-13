@@ -94,6 +94,7 @@ class ErrorHandler {
         res = this.errorHandler(res, serviceName);
         break;
       default:
+        console.log('RES ', res)
         console.error(statusHeader + chalk.red.bold(`Service returned an unexpected error: ${res.message}. Check the server.`));
         res = this.errorHandler(res, serviceName);
         break;

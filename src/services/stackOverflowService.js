@@ -466,8 +466,8 @@ class StackOverflowService extends DevOpsService {
       const error = await response;
       throw error;
     }
-
-    this.logAndTrackResponse(response.data.items);
+    console.log('POSTS ', await response)
+    this.logAndTrackResponse(Object.create(response).data);
     return response.data.items;
   }
 
