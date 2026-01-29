@@ -1,8 +1,11 @@
 export const settingsModel = {
-  azureDevOpsUsername: null,
-  azureDevOpsPat: null,
   useTestData: false,
   isVerbose: false,
+  timestamp: {
+    lastRun: null,
+    previousRun: null,
+  },
   numberOfDaysToQuery: 1,
+  runInDebugMode: false,
   startTimeOfQuery: 11,
 };

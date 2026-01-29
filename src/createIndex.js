@@ -10,7 +10,6 @@ async function generateIndexHtml(jsonData) {
   // Delete the index.html file located following the `indexPath` path
   try {
     await fs.unlink(indexPath);
-    console.log('index.html deleted successfully');
   } catch (error) {
     console.error('Failed to delete index.html:', error);
   }
@@ -284,11 +283,11 @@ async function generateIndexHtml(jsonData) {
 
     try {
       await fs.writeFile(indexPath, htmlContent);
-      console.log('index.html created successfully');
+      console.log('Opening index.html');
       sleep(1000);
       return { indexPath };
     } catch {
-        console.error('Failed to create/update index.html');
+        console.error('Failed to create index.html');
     }
 }
 

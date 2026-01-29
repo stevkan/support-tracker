@@ -4,20 +4,25 @@
   "description": "",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "support-tracker": "dist/index.js"
+  },
   "scripts": {
-    "start": "dotenvx run -- node dist/index.js",
-    "start:dev": "dotenvx run -- node src/index.js",
-    "build": "babel src --out-dir dist"
+    "start": "npm run build && dotenvx run --env-file .env -- node dist/index.js",
+    "start:dev": "dotenvx run --env-file .env -- node src/index.js",
+    "build": "babel src --out-dir dist",
+    "debug": "ndb node --env-file .env --prof ./src/index.js run-in-debug-mode true"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.6.4",
     "applicationinsights": "^2.1.8",
     "axios": "^1.7.3",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "crypto-js": "^4.2.0",
     "dotenv": "^8.0.0",
+    "env-paths": "^4.0.0",
     "html-to-text": "^9.0.5",
+    "keytar": "^7.9.0",
     "lowdb": "^7.0.1",
     "open-web-browser": "^0.1.1",
     "storaje-db": "github:stevkan/storajeDb"

@@ -2,7 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Program",
+      "name": "Launch Program 1",
+      "envFile": "${workspaceFolder}/.env",
+      "program": "${workspaceFolder}/src/index.js",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "internalConsoleOptions": "openOnFirstSessionStart",
+      "type": "node",
+    },
+    {
+      "name": "Launch Program 2",
       "envFile": "${workspaceFolder}/.env",
       "program": "./src/index.js",
       "request": "launch",

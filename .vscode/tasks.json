@@ -13,23 +13,16 @@
     },
     {
       "type": "npm",
-      "script": "start:prod",
-      "problemMatcher": [],
-      "label": "npm: start:prod",
-      "detail": "npm run build && dotenvx run -- node dist/index.js"
-    },
-    {
-      "type": "npm",
       "script": "start:dev",
       "problemMatcher": [],
-      "label": "npm: start:dev",
+      "label": "npm start:dev",
       "detail": "Run src files"
     },
     {
       "type": "npm",
       "script": "start",
       "problemMatcher": [],
-      "label": "npm: start",
+      "label": "npm start",
       "detail": "Run compiled dist ~files"
     }
   ]
