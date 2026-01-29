@@ -12,19 +12,7 @@ import { ErrorHandler } from '../errorHandler.js';
 import { jsonStore } from '../store/jsonStore.js';
 import { credentialService } from '../store/credentialService.js';
 
-/**
- * Environment variables used to configure the Azure DevOps integration.
- * @property {string} AZURE_DEVOPS_API_VERSION - The version of the Azure DevOps API to use.
- * @property {string} AZURE_DEVOPS_ORG - The name of the Azure DevOps organization.
- * @property {string} AZURE_DEVOPS_PAT - The personal access token for the Azure DevOps account.
- * @property {string} AZURE_DEVOPS_PROJECT - The name of the Azure DevOps project.
- * @property {string} AZURE_DEVOPS_USERNAME - The username for the Azure DevOps account.
- */
-const {
-  AZURE_DEVOPS_API_VERSION,
-  AZURE_DEVOPS_ORG,
-  AZURE_DEVOPS_PROJECT,
-} = process.env;
+
 
 /**
  * DevOpsService class represents a service for interacting with Azure DevOps.
@@ -44,6 +32,15 @@ class DevOpsService extends ErrorHandler {
     return { username, pat };
   }
 
+  async getAzureDevOpsConfig() {
+    const settings = await jsonStore.settingsDb.read();
+    return {
+      org: settings.azureDevOps?.org || '',
+      project: settings.azureDevOps?.project || '',
+      apiVersion: settings.azureDevOps?.apiVersion || '6.1',
+    };
+  }
+
   /**
    * Adds a collection of issues to the Azure DevOps work item tracking system.
    *
@@ -54,6 +51,8 @@ class DevOpsService extends ErrorHandler {
    * @throws {Error} If an error occurs during the issue creation process.
    */
   async addIssues(issues) {
+    const { org, project, apiVersion } = await this.getAzureDevOpsConfig();
+    
     for (const issue of issues) {
       const data = Object.keys(issue).map(key => ({
         "op": "add",
@@ -70,7 +69,7 @@ class DevOpsService extends ErrorHandler {
 
       const config = {
         method: 'POST',
-        url: `https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/workitems/$Issue?api-version=${AZURE_DEVOPS_API_VERSION}`,
+        url: `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$Issue?api-version=${apiVersion}`,
         maxBodyLength: Infinity,
         headers: {
           'Content-Type': 'application/json-patch+json',
@@ -98,13 +97,13 @@ class DevOpsService extends ErrorHandler {
    * @throws {Error} If an error occurs during the retrieval process.
    */
   async getAssignedIssue() {
+    const { org, project, apiVersion } = await this.getAzureDevOpsConfig();
     const query = {
       query: `SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo]
               FROM workitems
               WHERE [System.WorkItemType] = 'Issue'
               AND []`
     };
-    console.log('THIS ', await this.settingsDb());
     const { username, pat } = await this.getCredentials();
     const config = {
       headers: {
@@ -114,11 +113,11 @@ class DevOpsService extends ErrorHandler {
     };
 
     // Step 1: Get work item IDs
-    return await axios.post(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/wiql?api-version=${AZURE_DEVOPS_API_VERSION}`, query, config)
+    return await axios.post(`https://dev.azure.com/${org}/${project}/_apis/wit/wiql?api-version=${apiVersion}`, query, config)
       .then(async response => {
         const workItemIds = response.data.workItems.map(item => item.id).join(',');
         // Step 2: Get detailed information for each work item
-        return await axios.get(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${AZURE_DEVOPS_API_VERSION}`, {
+        return await axios.get(`https://dev.azure.com/${org}/${project}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${apiVersion}`, {
           auth: {
             username: username,
             password: pat
@@ -146,6 +145,7 @@ class DevOpsService extends ErrorHandler {
    * @throws {Error} If an error occurs during the retrieval process.
    */
   async getAssignedIssues() {
+    const { org, project, apiVersion } = await this.getAzureDevOpsConfig();
     const states = ['To Do', 'Waiting on Customer', 'Waiting on Internal Task', 'Investigating'];
 
     const query = {
@@ -164,11 +164,11 @@ class DevOpsService extends ErrorHandler {
     };
 
     // Step 1: Get work item IDs
-    return await axios.post(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/wiql?api-version=${AZURE_DEVOPS_API_VERSION}`, query, config)
+    return await axios.post(`https://dev.azure.com/${org}/${project}/_apis/wit/wiql?api-version=${apiVersion}`, query, config)
       .then(async response => {
         const workItemIds = response.data.workItems.map(item => item.id).join(',');
         // Step 2: Get detailed information for each work item
-        return await axios.get(`https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${AZURE_DEVOPS_API_VERSION}`, {
+        return await axios.get(`https://dev.azure.com/${org}/${project}/_apis/wit/workitems?ids=${workItemIds}&fields=System.Id,System.Title,Custom.IssueId&api-version=${apiVersion}`, {
           auth: {
             username: username,
             password: pat

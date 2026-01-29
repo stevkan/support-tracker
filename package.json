@@ -8,10 +8,11 @@
     "support-tracker": "dist/index.js"
   },
   "scripts": {
-    "start": "npm run build && dotenvx run --env-file .env -- node dist/index.js",
-    "start:dev": "dotenvx run --env-file .env -- node src/index.js",
+    "start": "npm run build && node dist/index.js",
+    "start:dev": "node src/index.js",
     "build": "babel src --out-dir dist",
-    "debug": "ndb node --env-file .env --prof ./src/index.js run-in-debug-mode true"
+    "debug": "ndb node --prof ./src/index.js run-in-debug-mode true",
+    "migrate:secrets": "dotenvx run --env-file .env -- node src/scripts/migrateSecrets.js"
   },
   "dependencies": {
     "applicationinsights": "^2.1.8",

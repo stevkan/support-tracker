@@ -15,12 +15,6 @@ import { issuesModel } from './store/models/issuesModel.js';
 
 dotenv.config(process.env);
 
-// Initialize the telemetry client.
-const telemetryClient = new TelemetryClient();
-
-// Initialize the DevOps service.
-const devOpsService = new DevOpsService(telemetryClient);
-
 const issuesDb = jsonStore.issuesDb;
 const settingsDb = jsonStore.settingsDb;
 const settings = settingsDb.read();
@@ -28,6 +22,11 @@ const program = new Command();
 
 try {
   (async () => {
+    // Initialize the telemetry client.
+    const telemetryClient = await TelemetryClient.create();
+
+    // Initialize the DevOps service.
+    const devOpsService = new DevOpsService(telemetryClient);
 
     program
       .name('support-tracker')
@@ -377,5 +376,6 @@ try {
     });
   })();
 } catch (error) {
-  devOpsService.errorHandler(error);
+  console.error(chalk.red('Error:'), error.message);
+  process.exit(1);
 }
