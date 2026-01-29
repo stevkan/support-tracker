@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { sleep } from '../utils.js';
 import { jsonStore } from '../store/jsonStore.js';
+import { secretsStore } from '../store/secretsStore.js';
 
 /**
  * Provides an implementation of the StackOverflowService that interacts with the internal Microsoft Stack Overflow Enterprise API.
@@ -66,9 +67,10 @@ class InternalStackOverflowService extends StackOverflowService {
     ];
 
     const params = this.buildRequestParams(tagged, this.lastRun);
+    const apiKey = await secretsStore.getStackOverflowKey();
     const headers = {
       'User-Agent': 'InternalStackOverflowService',
-      'X-API-Key': process.env.STACK_OVERFLOW_ENTERPRISE_KEY
+      'X-API-Key': apiKey
     };
 
     if (!!(await this.settings).useTestData) return await testData;

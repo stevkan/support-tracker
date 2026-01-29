@@ -1,15 +1,7 @@
-import applicationInsights from 'applicationinsights'; //Dana
+import applicationInsights from 'applicationinsights';
 import chalk from 'chalk';
 import { jsonStore } from './store/jsonStore.js';
-
-/**
- * Environment variables used to configure the application.
- * 
- * @property {string} APPINSIGHTS_INSTRUMENTATION_KEY - The instrumentation key for Application Insights.
- */
-const {
-  APPINSIGHTS_INSTRUMENTATION_KEY
-} = process.env;
+import { secretsStore } from './store/secretsStore.js';
 
 /**
  * TelemetryClient class for tracking telemetry events, exceptions, traces, HTTP requests and responses, and metrics.
@@ -17,20 +9,27 @@ const {
  */
 class TelemetryClient {
   /**
-   * Initializes the Application Insights telemetry client and configures it to automatically collect console logs and HTTP requests.
-   * Sets the cloud role name for the telemetry context.
+   * Creates a TelemetryClient instance. Use TelemetryClient.create() instead.
+   * @private
    */
-  constructor() {
-    this.telemetry;
-    this.initializeTelemetry();
+  constructor(telemetry) {
+    this.telemetry = telemetry;
   }
 
-  async initializeTelemetry() {
+  /**
+   * Creates and initializes a TelemetryClient instance.
+   * @returns {Promise<TelemetryClient>}
+   */
+  static async create() {
+    const instrumentationKey = await secretsStore.getAppInsightsKey();
+    
     applicationInsights.Configuration.setAutoCollectConsole(true, true);
-    applicationInsights.Configuration.setAutoCollectRequests(true, true);applicationInsights.setup(APPINSIGHTS_INSTRUMENTATION_KEY).start();
+    applicationInsights.Configuration.setAutoCollectRequests(true, true);
+    applicationInsights.setup(instrumentationKey).start();
+    
     const settings = await jsonStore.settingsDb.read();
 
-    if ((await settings).isVerbose) {
+    if (settings.isVerbose) {
       console.info(chalk.hex('#8d8219')('[AppInsights] Telemetry client initialized'));
       console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting console logs'));
       console.info(chalk.hex('#8d8219')('[AppInsights] Auto collecting requests\n'));
@@ -38,7 +37,8 @@ class TelemetryClient {
     
     const telemetry = applicationInsights.defaultClient;
     telemetry.context.tags['ai.cloud.role'] = 'Support-Tracker-App';
-    this.telemetry = telemetry;
+    
+    return new TelemetryClient(telemetry);
   }
 
   /**

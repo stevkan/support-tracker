@@ -19,6 +19,7 @@ import axios, { AxiosError } from 'axios';
 import chalk from 'chalk';
 import { htmlToText } from 'html-to-text';
 import { jsonStore } from '../store/jsonStore.js';
+import { secretsStore } from '../store/secretsStore.js';
 import { DevOpsService } from './index.js';
 import { areObjectsInArrayEmpty, getSdk, removeDuplicates, sleep } from '../utils.js';
 
@@ -367,7 +368,7 @@ class GitHubService extends DevOpsService {
       }
     ];
 
-    const config = this.getGitHubConfig();
+    const config = await this.getGitHubConfig();
     if (labels) {
       if (!!(await this.settings).useTestData) return await emptyData;
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config);
@@ -382,11 +383,13 @@ class GitHubService extends DevOpsService {
    *
    * @returns {Object} The configuration object for the GitHub GraphQL API request.
    */
-  getGitHubConfig() {
+  async getGitHubConfig() {
+    const settings = await jsonStore.settingsDb.read();
+    const token = await secretsStore.getGitHubToken();
     return {
       method: 'POST',
-      url: process.env.GITHUB_API_URL,
-      headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'Content-Type': 'application/json'}
+      url: settings.github?.apiUrl || 'https://api.github.com/graphql',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'}
     };
   }
 
