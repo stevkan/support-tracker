@@ -165,7 +165,7 @@ class GitHubService extends DevOpsService {
       // Iterates over the GitHub issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
         // Processes the unassigned issues by converting the issue description to plain text.
-        issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
+        // issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
 
         /**
          * Searches for possible existing work item in the DevOps system by its GitHub issue ID.

@@ -141,7 +141,7 @@ class StackOverflowService extends DevOpsService {
         question_id,
       }) => ({
         "System.Title": title.slice(0, 255).toString(),
-        "System.Description": body,
+        // "System.Description": body,
         "Custom.IssueID": question_id,
         "Custom.IssueType": this.source,
         "Custom.IssueURL": `<a href="${this.getUrl(question_id)}"> ${this.getUrl(question_id)} </a>`
@@ -175,7 +175,7 @@ class StackOverflowService extends DevOpsService {
       // Iterates over the Stack Overflow issues to check if they already exist in the DevOps system.
       for (const issue of issues) {
         // Processes the unassigned issues by converting the issue description to plain text.
-        issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
+        // issue['System.Description'] = htmlToText(issue['System.Description'], htmlToTextOptions);
 
         /**
          * Searches for possible existing work item in the DevOps system by its GitHub issue ID.
@@ -466,7 +466,7 @@ class StackOverflowService extends DevOpsService {
       const error = await response;
       throw error;
     }
-    console.log('POSTS ', await response)
+    // console.log('POSTS ', await response)
     this.logAndTrackResponse(Object.create(response).data);
     return response.data.items;
   }

@@ -6,6 +6,7 @@ import openBrowser from 'open-web-browser';
 
 import { sleep } from './utils.js';
 import { jsonStore } from './store/jsonStore.js';
+import { credentialService } from './store/credentialService.js';
 import { TelemetryClient } from './telemetryClient.js';
 import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
 import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
@@ -23,7 +24,6 @@ const devOpsService = new DevOpsService(telemetryClient);
 const issuesDb = jsonStore.issuesDb;
 const settingsDb = jsonStore.settingsDb;
 const settings = settingsDb.read();
-
 const program = new Command();
 
 try {
@@ -100,11 +100,15 @@ try {
     program.command('get-params')
       .description('Get the current parameters for the application.')
       .action(async (str, options) => {
-          const { azureDevOpsUsername, azureDevOpsPat, isVerbose, useVerbosity, numberOfDaysToQuery, startTimeOfQuery } = settings;
-          console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername }`));
-          console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat }`));
+          const { isVerbose, useVerbosity, numberOfDaysToQuery, startTimeOfQuery, timestamp } = await settings;
+          const azureDevOpsUsername = await credentialService.getAzureDevOpsUsername();
+          const azureDevOpsPat = await credentialService.getAzureDevOpsPat();
+          console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername || '(not set)' }`));
+          console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat ? '********' : '(not set)' }`));
           console.log(chalk.green(`Use Test Data:`), chalk.white(`${ isVerbose }`));
           console.log(chalk.green(`Is Verbose:`), chalk.white(`${ useVerbosity }`));
+          console.log(chalk.green(`Last Run Timestamp:`), chalk.white(`${ timestamp.lastRun }`));
+          console.log(chalk.green(`Previous Run Timestamp:`), chalk.white(`${ timestamp.previousRun }`));
           console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
           console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
           process.exit(0);
@@ -210,8 +214,8 @@ try {
         }
 
         try {
-          const username = azureDevOpsUsername ?? (await settings).azureDevOpsUsername;
-          await settingsDb.update('azureDevOpsUsername', username);
+          await credentialService.setAzureDevOpsUsername(azureDevOpsUsername);
+          console.log(chalk.green('Azure DevOps username stored securely.'));
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
@@ -233,8 +237,8 @@ try {
         }
 
         try {
-          const pat = azureDevOpsPat ?? (await settings).azureDevOpsPat;
-          await settingsDb.update('azureDevOpsPat', pat);
+          await credentialService.setAzureDevOpsPat(azureDevOpsPat);
+          console.log(chalk.green('Azure DevOps PAT stored securely in OS credential manager.'));
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
@@ -248,16 +252,29 @@ try {
     program.parse();
 
     const args = process.argv.slice(2);
-    if ( args.length === 0 && (await settings).useTestData === true) {
+    const setupCommands = ['set-pat', 'set-username', 'set-params', 'set-use-test-data', 'set-verbosity', 'get-params', 'help'];
+    const isSetupCommand = args.length > 0 && setupCommands.some(cmd => args[0] === cmd || args[0] === 'help');
+    
+    if (isSetupCommand) {
+      return;
+    }
+
+    if (args.length === 0 && (await settings).useTestData === true) {
       console.error(chalk.greenBright.underline.bold('### RUNNING IN DEVELOPMENT MODE ###'))
     };
 
-    if ((await settings).azureDevOpsUsername === undefined || (await settings).azureDevOpsUsername === "" || (await settings).azureDevOpsPat === undefined || (await settings).azureDevOpsPat === "") {
+    const storedUsername = await credentialService.getAzureDevOpsUsername();
+    const storedPat = await credentialService.getAzureDevOpsPat();
+    if (!storedUsername || !storedPat) {
       console.error(chalk.red.bold('\nAzure DevOps username and PAT are required.'));
+      console.error(chalk.yellow('Run: npm start set-username <username>'));
+      console.error(chalk.yellow('Run: npm start set-pat <pat>'));
       process.exit(1);
     }
     
     let queryDate = new Date();
+    await settingsDb.update('timestamp.previousRun', (await settings).timestamp.lastRun);
+    await settingsDb.update('timestamp.lastRun', queryDate.toISOString());
     queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
     const timeOfDayToQueryFrom = Number((await settings).startTimeOfQuery);
     queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
@@ -281,7 +298,7 @@ try {
      * @param {Date} queryDate - The date used to query the data sources.
      */
     const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient);
-    const internalStackOverflowService = new InternalStackOverflowService(InternalStackOverflow, queryDate, telemetryClient);
+    // const internalStackOverflowService = new InternalStackOverflowService(InternalStackOverflow, queryDate, telemetryClient);
     const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient);
   
     const startTime = new Date();
@@ -308,16 +325,16 @@ try {
     
     console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
-    console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    await internalStackOverflowService.process()
-      .then(res => {
-        const { message } = devOpsService.handleServiceResponse(res, 'InternalStackOverflowService');
-        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
-      })
-      .catch(err => devOpsService.handleServiceResponse(err));
-    console.groupEnd();
+    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+    // await internalStackOverflowService.process()
+    //   .then(res => {
+    //     const { message } = devOpsService.handleServiceResponse(res, 'InternalStackOverflowService');
+    //     console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+    //   })
+    //   .catch(err => devOpsService.handleServiceResponse(err));
+    // console.groupEnd();
     
-    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
     
     console.group(chalk.blue.bold('\nProcessing GitHub...'))
     await gitHubService.process()
@@ -348,6 +365,14 @@ try {
             process.exit(0);
           })
         }
+        // const state = await openBrowser(indexPath)
+        // if (state) {
+        //   await sleep(3000).then(() => {
+        //     telemetryClient.flushClient();
+        //     resolve();
+        //     process.exit(0);
+        //   })
+        // }
       }
     });
   })();

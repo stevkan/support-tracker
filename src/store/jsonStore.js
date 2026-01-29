@@ -1,13 +1,25 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Low } from 'lowdb';
 import { JSONFile, JSONFilePreset } from 'lowdb/node';
 import { Store } from 'storaje-db';
 import { issuesModel, loggingModel, settingsModel } from './models/models.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dataDir = path.join(__dirname, 'db');
+
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
 class JsonStore {
   constructor() {
-    this.issuesDb = new Store('./src/store/db/', 'issues.json', issuesModel);
-    this.loggingDb = new Store('./src/store/db/', 'logging.json', loggingModel);
-    this.settingsDb = new Store('./src/store/db/', 'settings.json', settingsModel);
+    const dbPath = path.relative(process.cwd(), dataDir) + path.sep;
+    this.issuesDb = new Store(dbPath, 'issues.json', issuesModel);
+    this.loggingDb = new Store(dbPath, 'logging.json', loggingModel);
+    this.settingsDb = new Store(dbPath, 'settings.json', settingsModel);
   }
 
   async initializeDbs() {
