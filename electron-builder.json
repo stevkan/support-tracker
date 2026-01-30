@@ -21,6 +21,12 @@
     "main": "src/main/main.js"
   },
   "asar": true,
+  "extraResources": [
+    {
+      "from": "devops.ico",
+      "to": "icon.ico"
+    }
+  ],
   "win": {
     "target": [
       {
@@ -28,7 +34,7 @@
         "arch": ["x64"]
       }
     ],
-    "icon": "build/icon.ico"
+    "icon": "devops.ico"
   },
   "nsis": {
     "oneClick": false,
