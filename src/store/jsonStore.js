@@ -1,14 +1,15 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { app } from 'electron';
 import { Low } from 'lowdb';
 import { JSONFile, JSONFilePreset } from 'lowdb/node';
 import { Store } from 'storaje-db';
 import { issuesModel, loggingModel, settingsModel } from './models/models.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataDir = path.join(__dirname, 'db');
+const isPackaged = app.isPackaged;
+const dataDir = isPackaged
+  ? path.join(app.getPath('userData'), 'db')
+  : path.join(process.cwd(), 'src', 'store', 'db');
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -16,7 +17,7 @@ if (!fs.existsSync(dataDir)) {
 
 class JsonStore {
   constructor() {
-    const dbPath = path.relative(process.cwd(), dataDir) + path.sep;
+    const dbPath = dataDir + path.sep;
     this.issuesDb = new Store(dbPath, 'issues.json', issuesModel);
     this.loggingDb = new Store(dbPath, 'logging.json', loggingModel);
     this.settingsDb = new Store(dbPath, 'settings.json', settingsModel);
