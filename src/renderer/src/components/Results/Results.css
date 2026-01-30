@@ -1,0 +1,169 @@
+.results-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  gap: 10px;
+}
+
+.results-loading {
+  text-align: center;
+  padding: 40px;
+}
+
+.results-loading .loading-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.results-loading .loading-elapsed {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.results-loading .loading-service {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.results-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.results-process-time {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background-color: rgba(103, 138, 180, 0.3);
+}
+
+.results-service {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+}
+
+.results-service h2 {
+  margin: 0 0 10px 0;
+}
+
+.results-service.stackoverflow {
+  background-color: #f46f1c30;
+}
+
+.results-service.internal-stackoverflow {
+  background-color: #ffcd2530;
+}
+
+.results-service.github {
+  background-color: #3b8edc30;
+}
+
+.subsection-header {
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+.results-table {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 5px;
+  width: 100%;
+}
+
+.results-row {
+  display: flex;
+  width: 100%;
+}
+
+.results-row:nth-child(even) {
+  background-color: var(--bg-tertiary);
+}
+
+.results-row:nth-child(odd):not(.table-header) {
+  background-color: var(--bg-secondary);
+}
+
+.table-header {
+  background-color: var(--bg-tertiary);
+  font-weight: bold;
+}
+
+.header-cell {
+  display: flex;
+  padding: 5px;
+  border: 1px solid var(--border-color);
+}
+
+.header-cell.id {
+  border-right: 1px solid var(--border-color);
+}
+
+.results-cell {
+  display: flex;
+  padding: 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.results-cell.id {
+  border-right: 1px solid var(--border-color);
+}
+
+.results-cell a,
+.results-table a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.results-cell a:hover,
+.results-table a:hover {
+  text-decoration: underline;
+}
+
+.id {
+  width: 8em;
+  min-width: 8em;
+}
+
+.repo {
+  width: 16em;
+  min-width: 12em;
+  border-right: 1px solid var(--border-color);
+}
+
+.title {
+  flex: 1;
+  width: 100%;
+}
+
+@media screen and (max-width: 1080px) {
+  .header-cell {
+    border: 1px solid var(--border-color);
+  }
+
+  .header-cell.id {
+    border-right: none;
+  }
+
+  .results-cell {
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
+  }
+
+  .results-cell.id {
+    border-right: none;
+  }
+
+  .title {
+    min-width: 36em;
+  }
+}

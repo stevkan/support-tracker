@@ -58,27 +58,36 @@
 | --- | --- |
 | `help` | Display help information |
 | `help <command>` | Display help information for a specific command |
-| `get-params` | Get the current parameters for the application |
-| `set-params` | Set the current parameters for the application |
+| `set-services` | Enable/disable query services (use `--service` or `--no-service`) |
 | `set-use-test-data` | Enables/disables the use of test data [Default: false] |
 | `set-verbosity` | Enables/disables verbose logging [Default: false] |
 | `set-username` | Set the Azure DevOps username |
 | `set-pat` | Set the Azure DevOps Personal Access Token |
 
-Example: `npm start set-params 4 12`: Sets the number of days to pull issues for and the time of day at which to stop pulling issues. For instance, given the above parameters, the application will pull issues for the last 4 days and stop pulling issues at 12:00 PM of the 4th day.
+Example: `npm run cli set-services --github --no-stackOverflow --no-internalStackOverflow`
+
+> **Note:** Query parameters (days to query, start hour) are configured via the desktop app UI. The CLI respects these settings when run.
 
 ### Building the application
-```
+```bash
 npm install
 ```
 
-```
-npm run build
+### Running the Desktop App (Electron)
+
+**Development mode** (with hot reload):
+```bash
+npm run dev
 ```
 
-### Running the application
+**Build installer**:
+```bash
+npm run package
 ```
-npm start
+
+### Running the CLI
+```bash
+npm run cli
 ```
 
 ### Adjusting test data options
