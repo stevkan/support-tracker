@@ -1,0 +1,322 @@
+import { useState, useEffect } from 'react';
+import { useApp } from '../../../state';
+import { updateSettings, setSecret, checkSecret, getSecret } from '../../../api/client';
+
+const GROUPS = [
+  { id: 'azureDevOps', label: 'Azure DevOps' },
+  { id: 'apiKeys', label: 'API Keys' },
+  { id: 'advanced', label: 'Advanced' },
+];
+
+const SECRET_KEY_MAP = {
+  adoUsername: 'azure-devops-username',
+  adoPat: 'azure-devops-pat',
+  githubToken: 'github-token',
+  stackOverflowKey: 'stack-overflow-key',
+  appInsightsKey: 'appinsights-key',
+};
+
+export default function SettingsTab() {
+  const { settings: appSettings, refreshSettings, setHasUnsavedChanges } = useApp();
+
+  const [activeGroup, setActiveGroup] = useState('azureDevOps');
+  const [formData, setFormData] = useState({
+    adoOrg: '',
+    adoProject: '',
+    adoApiVersion: '6.1',
+    adoUsername: '',
+    adoPat: '',
+    githubToken: '',
+    stackOverflowKey: '',
+    appInsightsKey: '',
+    useTestData: false,
+    isVerbose: false,
+  });
+  const [originalData, setOriginalData] = useState({});
+  const [secretStatus, setSecretStatus] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [visibleFields, setVisibleFields] = useState({});
+  const [loadedSecrets, setLoadedSecrets] = useState({});
+  const [pendingGroupSwitch, setPendingGroupSwitch] = useState(null);
+
+  useEffect(() => {
+    loadData();
+  }, [appSettings]);
+
+  async function loadData() {
+    const data = {
+      adoOrg: appSettings?.azureDevOps?.org || '',
+      adoProject: appSettings?.azureDevOps?.project || '',
+      adoApiVersion: appSettings?.azureDevOps?.apiVersion || '6.1',
+      adoUsername: '',
+      adoPat: '',
+      githubToken: '',
+      stackOverflowKey: '',
+      appInsightsKey: '',
+      useTestData: appSettings?.useTestData || false,
+      isVerbose: appSettings?.isVerbose || false,
+    };
+
+    setFormData(data);
+    setOriginalData({ ...data });
+
+    const statuses = {};
+    for (const [fieldKey, secretKey] of Object.entries(SECRET_KEY_MAP)) {
+      try {
+        const result = await checkSecret(secretKey);
+        statuses[fieldKey] = result.hasValue;
+      } catch {
+        statuses[fieldKey] = false;
+      }
+    }
+    setSecretStatus(statuses);
+  }
+
+  function handleChange(key, value) {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    setHasUnsavedChanges(true);
+  }
+
+  async function toggleVisibility(key) {
+    const isCurrentlyVisible = visibleFields[key];
+    
+    if (!isCurrentlyVisible && secretStatus[key] && !formData[key]) {
+      // Fetch the stored secret value to display it
+      const secretKey = SECRET_KEY_MAP[key];
+      if (secretKey) {
+        try {
+          const result = await getSecret(secretKey);
+          if (result.value) {
+            setFormData((prev) => ({ ...prev, [key]: result.value }));
+            setLoadedSecrets((prev) => ({ ...prev, [key]: result.value }));
+          }
+        } catch (err) {
+          console.error('Failed to fetch secret:', err);
+        }
+      }
+    }
+    
+    setVisibleFields((prev) => ({ ...prev, [key]: !isCurrentlyVisible }));
+  }
+
+  function isChanged(key) {
+    if (SECRET_KEY_MAP[key]) {
+      const currentValue = formData[key] || '';
+      const loadedValue = loadedSecrets[key] || '';
+      // Only changed if user typed something different from what was loaded
+      return currentValue !== '' && currentValue !== loadedValue;
+    }
+    return formData[key] !== originalData[key];
+  }
+
+  function hasGroupChanges(groupId) {
+    const fields = getFieldsForGroup(groupId);
+    return fields.some((f) => isChanged(f.key));
+  }
+
+  function handleGroupSwitch(newGroupId) {
+    if (newGroupId === activeGroup) return;
+    
+    if (hasGroupChanges(activeGroup)) {
+      setPendingGroupSwitch(newGroupId);
+      return;
+    }
+    setActiveGroup(newGroupId);
+  }
+
+  function confirmGroupSwitch() {
+    if (pendingGroupSwitch) {
+      setFormData({ ...originalData });
+      setLoadedSecrets({});
+      setVisibleFields({});
+      setHasUnsavedChanges(false);
+      setActiveGroup(pendingGroupSwitch);
+      setPendingGroupSwitch(null);
+    }
+  }
+
+  function cancelGroupSwitch() {
+    setPendingGroupSwitch(null);
+  }
+
+  function getFieldsForGroup(groupId) {
+    switch (groupId) {
+      case 'azureDevOps':
+        return [
+          { key: 'adoUsername', label: 'Username', type: 'text', isSecret: true },
+          { key: 'adoPat', label: 'Personal Access Token', type: 'password', isSecret: true },
+          { key: 'adoOrg', label: 'Organization', type: 'text' },
+          { key: 'adoProject', label: 'Project', type: 'text' },
+          { key: 'adoApiVersion', label: 'API Version', type: 'text' },
+        ];
+      case 'apiKeys':
+        return [
+          { key: 'githubToken', label: 'GitHub Token', type: 'password', isSecret: true },
+          { key: 'stackOverflowKey', label: 'Stack Overflow Enterprise Key', type: 'password', isSecret: true },
+          { key: 'appInsightsKey', label: 'App Insights Instrumentation Key', type: 'password', isSecret: true },
+        ];
+      case 'advanced':
+        return [
+          { key: 'useTestData', label: 'Use Test Data', type: 'toggle' },
+          { key: 'isVerbose', label: 'Verbose Logging', type: 'toggle' },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const fields = getFieldsForGroup(activeGroup);
+
+      for (const field of fields) {
+        if (!isChanged(field.key)) continue;
+
+        if (field.isSecret) {
+          const secretKey = SECRET_KEY_MAP[field.key];
+          if (secretKey && formData[field.key]) {
+            await setSecret(secretKey, formData[field.key]);
+          }
+        }
+      }
+
+      if (activeGroup === 'azureDevOps') {
+        const azureDevOpsUpdates = {};
+        if (isChanged('adoOrg')) azureDevOpsUpdates.org = formData.adoOrg;
+        if (isChanged('adoProject')) azureDevOpsUpdates.project = formData.adoProject;
+        if (isChanged('adoApiVersion')) azureDevOpsUpdates.apiVersion = formData.adoApiVersion;
+
+        if (Object.keys(azureDevOpsUpdates).length > 0) {
+          await updateSettings({
+            azureDevOps: { ...appSettings?.azureDevOps, ...azureDevOpsUpdates },
+          });
+        }
+      }
+
+      if (activeGroup === 'advanced') {
+        const advancedUpdates = {};
+        if (isChanged('useTestData')) advancedUpdates.useTestData = formData.useTestData;
+        if (isChanged('isVerbose')) advancedUpdates.isVerbose = formData.isVerbose;
+
+        if (Object.keys(advancedUpdates).length > 0) {
+          await updateSettings(advancedUpdates);
+        }
+      }
+
+      await refreshSettings();
+      await loadData();
+      setVisibleFields({});
+      setLoadedSecrets({});
+      setHasUnsavedChanges(false);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function renderField(field) {
+    const value = formData[field.key] ?? '';
+    const changed = isChanged(field.key);
+
+    if (field.type === 'toggle') {
+      return (
+        <div key={field.key} className="toggle-group">
+          <span className="toggle-label">{field.label}</span>
+          <label className={`toggle-switch ${changed ? 'changed' : ''}`}>
+            <input
+              type="checkbox"
+              checked={!!formData[field.key]}
+              onChange={(e) => handleChange(field.key, e.target.checked)}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
+      );
+    }
+
+    const isSecretField = field.isSecret;
+    const isVisible = visibleFields[field.key];
+
+    return (
+      <div key={field.key} className="form-group">
+        <label>{field.label}</label>
+        <div className={`input-wrapper ${isSecretField ? 'has-toggle' : ''}`}>
+          <input
+            type={isSecretField && !isVisible ? 'password' : 'text'}
+            value={value}
+            onChange={(e) => handleChange(field.key, e.target.value)}
+            className={changed ? 'changed' : ''}
+            placeholder={isSecretField && secretStatus[field.key] ? '••••••••' : ''}
+          />
+          {isSecretField && (
+            <button
+              type="button"
+              className="visibility-toggle"
+              onClick={() => toggleVisibility(field.key)}
+              aria-label={isVisible ? 'Hide value' : 'Show value'}
+            >
+              {isVisible ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const currentFields = getFieldsForGroup(activeGroup);
+  const currentGroup = GROUPS.find((g) => g.id === activeGroup);
+
+  return (
+    <div className="settings-layout">
+      <div className="settings-sidebar">
+        <div className="settings-menu">
+          {GROUPS.map((group) => (
+            <button
+              key={group.id}
+              className={`settings-menu-item ${activeGroup === group.id ? 'active' : ''}`}
+              onClick={() => handleGroupSwitch(group.id)}
+            >
+              {group.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-content">
+        <h3 className="settings-group-title">{currentGroup?.label}</h3>
+        {currentFields.map(renderField)}
+        <div className="settings-actions">
+          <button
+            className="btn-primary"
+            onClick={handleSave}
+            disabled={!hasGroupChanges(activeGroup) || saving}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+      {pendingGroupSwitch && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p>You have unsaved changes. Discard and switch?</p>
+            <div className="confirm-actions">
+              <button className="btn-secondary" onClick={cancelGroupSwitch}>Cancel</button>
+              <button className="btn-primary" onClick={confirmGroupSwitch}>Discard</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

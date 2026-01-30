@@ -8,10 +8,44 @@ import { sleep } from './utils.js';
 import { jsonStore } from './store/jsonStore.js';
 import { credentialService } from './store/credentialService.js';
 import { TelemetryClient } from './telemetryClient.js';
-import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from './services/index.js';
-import { GitHub, InternalStackOverflow, StackOverflow } from './config.js';
+import { DevOpsService, GitHubService, InternalStackOverflowService, StackOverflowService } from '../shared/domain/services/index.js';
 import { generateIndexHtml } from './createIndex.js'
 import { issuesModel } from './store/models/issuesModel.js';
+
+/**
+ * Build service configurations from stored settings.
+ */
+function buildServiceConfigs(settings) {
+  const repos = settings.repositories || {};
+  
+  const GitHub = {
+    repositories: (repos.github || [])
+      .filter(r => r.enabled)
+      .map(r => {
+        const item = { org: r.org, repo: r.repo };
+        if (r.labels) item.labels = r.labels;
+        if (r.ignoreLabels) item.ignoreLabels = r.ignoreLabels;
+        return item;
+      }),
+    source: 'GitHub',
+  };
+
+  const StackOverflow = {
+    tags: (repos.stackOverflow || [])
+      .filter(t => t.enabled)
+      .map(t => t.tag),
+    source: 'Stack Overflow',
+  };
+
+  const InternalStackOverflow = {
+    tags: (repos.internalStackOverflow || [])
+      .filter(t => t.enabled)
+      .map(t => t.tag),
+    source: 'Stack Overflow Internal',
+  };
+
+  return { GitHub, StackOverflow, InternalStackOverflow };
+}
 
 dotenv.config(process.env);
 
@@ -25,8 +59,11 @@ try {
     // Initialize the telemetry client.
     const telemetryClient = await TelemetryClient.create();
 
+    // Initialize dependencies for shared services.
+    const deps = { jsonStore, credentialService };
+
     // Initialize the DevOps service.
-    const devOpsService = new DevOpsService(telemetryClient);
+    const devOpsService = new DevOpsService(telemetryClient, deps);
 
     program
       .name('support-tracker')
@@ -39,20 +76,11 @@ try {
         else if (options.args[0] === 'help' && options.args[1] === undefined) program.help();
         else if (options.args[0] === 'help' && options.args[1] !== undefined) {
           switch (options.args[1]) {
-            case 'get-params':
+            case 'set-services':
               program.command('help')
-                .usage(' ')
+                .usage('set-services')
                 .addHelpOption(false)
-                .argument('None', 'This command does not take any arguments.')
-                .addHelpText('after', chalk.green(`\nExample: npm start get-params`))
-                .help();
-              break;
-            case 'set-params':
-              program.command('help')
-                .usage('set-params')
-                .addHelpOption(false)
-                .argument('[number-of-days] [starting-hour]')
-                .addHelpText('after', chalk.green(`\nExample: npm start set-params 7 11`))
+                .addHelpText('after', chalk.green(`\nExample: npm start set-services --github --no-stackOverflow --no-internalStackOverflow`))
                 .help();
               break;
             case 'set-use-test-data':
@@ -96,47 +124,41 @@ try {
         };
       });
 
-    program.command('get-params')
-      .description('Get the current parameters for the application.')
-      .action(async (str, options) => {
-          const { isVerbose, useVerbosity, numberOfDaysToQuery, startTimeOfQuery, timestamp } = await settings;
-          const azureDevOpsUsername = await credentialService.getAzureDevOpsUsername();
-          const azureDevOpsPat = await credentialService.getAzureDevOpsPat();
-          console.log(chalk.green(`Azure DevOps Username:`), chalk.white(`${ azureDevOpsUsername || '(not set)' }`));
-          console.log(chalk.green(`Azure DevOps PAT:`), chalk.white(`${ azureDevOpsPat ? '********' : '(not set)' }`));
-          console.log(chalk.green(`Use Test Data:`), chalk.white(`${ isVerbose }`));
-          console.log(chalk.green(`Is Verbose:`), chalk.white(`${ useVerbosity }`));
-          console.log(chalk.green(`Last Run Timestamp:`), chalk.white(`${ timestamp.lastRun }`));
-          console.log(chalk.green(`Previous Run Timestamp:`), chalk.white(`${ timestamp.previousRun }`));
-          console.log(chalk.green(`Number of Days to Query:`), chalk.white(`${ numberOfDaysToQuery }`));
-          console.log(chalk.green(`Start Time of Query:`), chalk.white(`${ startTimeOfQuery }`));
-          process.exit(0);
-      })
-      .helpOption(false)
-      .addHelpOption(false)
-      .helpCommand(false);
+    function isValidJSON(str) {
+      try {
+        JSON.parse(str);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
 
-    program.command('set-params')
-      .description('Set the number of days to query and the hour to query back to. [Default: 1 11]')
-      .argument('[number-of-days]', 'number of days to query for issues', 1)
-      .argument('[starting-hour]', 'hour of day to query for issues', 11)
-      .action(async (numberOfDaysToQuery, startTimeOfQuery, options) => {
-        if (isNaN(numberOfDaysToQuery) || numberOfDaysToQuery < 1) {
-          const error = new InvalidArgumentError('Invalid or missing argument: <number-of-days>');
-          devOpsService.errorHandler(error);
-          process.exit(1);
-        }
-        if (isNaN(startTimeOfQuery) || startTimeOfQuery < 1 || startTimeOfQuery > 23) {
-          const error = new InvalidArgumentError('Invalid or missing argument: <starting-hour>');
-          devOpsService.errorHandler(error);
-          process.exit(1);
-        }
-
+    program.command('set-services')
+      .description('Enable or disable query services. Use --service to enable, --no-service to disable.')
+      .option('--github', 'Enable GitHub service')
+      .option('--no-github', 'Disable GitHub service')
+      .option('--stackOverflow', 'Enable Stack Overflow service')
+      .option('--no-stackOverflow', 'Disable Stack Overflow service')
+      .option('--internalStackOverflow', 'Enable Internal Stack Overflow service')
+      .option('--no-internalStackOverflow', 'Disable Internal Stack Overflow service')
+      .action(async (options) => {
         try {
-          const days = Number(numberOfDaysToQuery) || (await settings).numberOfDaysToQuery;
-          const time = Number(startTimeOfQuery) || (await settings).startTimeOfQuery;
-          await settingsDb.update( 'numberOfDaysToQuery', days );
-          await settingsDb.update( 'startTimeOfQuery', time );
+          const currentSettings = await settings;
+          const enabledServices = currentSettings.enabledServices || {
+            github: true,
+            stackOverflow: true,
+            internalStackOverflow: false,
+          };
+
+          if (options.github !== undefined) enabledServices.github = options.github;
+          if (options.stackOverflow !== undefined) enabledServices.stackOverflow = options.stackOverflow;
+          if (options.internalStackOverflow !== undefined) enabledServices.internalStackOverflow = options.internalStackOverflow;
+
+          await settingsDb.update('enabledServices', enabledServices);
+          console.log(chalk.green('Enabled services updated:'));
+          console.log(chalk.white(`  GitHub: ${enabledServices.github}`));
+          console.log(chalk.white(`  Stack Overflow: ${enabledServices.stackOverflow}`));
+          console.log(chalk.white(`  Internal Stack Overflow: ${enabledServices.internalStackOverflow}`));
         } catch (error) {
           devOpsService.errorHandler(error);
           process.exit(1);
@@ -146,15 +168,6 @@ try {
       .helpOption(false)
       .addHelpOption(false)
       .helpCommand(false);
-
-    function isValidJSON(str) {
-      try {
-        JSON.parse(str);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    }
 
     program.command('set-use-test-data')
       .description("Enables/disables the use of test data. [Default: false]")
@@ -251,7 +264,7 @@ try {
     program.parse();
 
     const args = process.argv.slice(2);
-    const setupCommands = ['set-pat', 'set-username', 'set-params', 'set-use-test-data', 'set-verbosity', 'get-params', 'help'];
+    const setupCommands = ['set-pat', 'set-username', 'set-services', 'set-use-test-data', 'set-verbosity', 'help'];
     const isSetupCommand = args.length > 0 && setupCommands.some(cmd => args[0] === cmd || args[0] === 'help');
     
     if (isSetupCommand) {
@@ -274,31 +287,25 @@ try {
     let queryDate = new Date();
     await settingsDb.update('timestamp.previousRun', (await settings).timestamp.lastRun);
     await settingsDb.update('timestamp.lastRun', queryDate.toISOString());
-    queryDate.setDate(queryDate.getDate()-(await settings).numberOfDaysToQuery);
-    const timeOfDayToQueryFrom = Number((await settings).startTimeOfQuery);
-    queryDate.setHours(timeOfDayToQueryFrom, 0, 0, 0);
+    const currentSettings = await settings;
+    queryDate.setDate(queryDate.getDate() - (currentSettings.queryDefaults?.numberOfDaysToQuery || 1));
+    const startHour = Number(currentSettings.queryDefaults?.startHour ?? 10);
+    queryDate.setHours(startHour, 0, 0, 0);
     queryDate = new Date(queryDate.toUTCString());
   
     // Calling sleep is necessary to ensure parameters are set before calling the services.
     await sleep(1000);
   
-    /**
-     * Initializes the StackOverflowService, InternalStackOverflowService, and GitHubService with the necessary configuration and dependencies.
-     * 
-     * The StackOverflowService is responsible for retrieving and processing data from the public StackOverflow API.
-     * The InternalStackOverflowService is responsible for retrieving and processing data from the internal StackOverflow API.
-     * The GitHubService is responsible for retrieving and processing data from the GitHub API.
-     * 
-     * These services are used to gather data from various sources that are then processed and integrated into the application.
-     * 
-     * @param {Object} StackOverflow - The configuration object for the StackOverflow API.
-     * @param {Object} InternalStackOverflow - The configuration object for the internal StackOverflow API.
-     * @param {Object} GitHub - The configuration object for the GitHub API.
-     * @param {Date} queryDate - The date used to query the data sources.
-     */
-    const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient);
-    // const internalStackOverflowService = new InternalStackOverflowService(InternalStackOverflow, queryDate, telemetryClient);
-    const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient);
+    const enabledServices = currentSettings.enabledServices || {
+      github: true,
+      stackOverflow: true,
+      internalStackOverflow: false,
+    };
+
+    const { GitHub, StackOverflow, InternalStackOverflow } = buildServiceConfigs(currentSettings);
+    const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient, deps);
+    const internalStackOverflowService = new InternalStackOverflowService(InternalStackOverflow, queryDate, telemetryClient, deps);
+    const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient, deps);
   
     const startTime = new Date();
     startTime.setDate(startTime.getDate());
@@ -307,42 +314,41 @@ try {
     telemetryClient.trackEvent({ name: "Starting Processes", measurements: { date: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) } });
     await issuesDb.write(issuesModel);
     await issuesDb.update('index.startTime', localStartTime);
-  
-    /**
-     * Processes the data from the StackOverflow and GitHub services.
-     * 
-     * This code is part of the main application logic that orchestrates the data retrieval and processing from various services.
-     */
-    console.group(chalk.rgb(244, 128, 36).bold('\nProcessing StackOverflow...'))
-    await stackOverflowService.process()
-      .then(res => {
-        const response = devOpsService.handleServiceResponse(res, 'StackOverflowService');
-        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
-      })
-      .catch(err => devOpsService.handleServiceResponse(err));
-    console.groupEnd();
-    
-    console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
-    
-    // console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
-    // await internalStackOverflowService.process()
-    //   .then(res => {
-    //     const { message } = devOpsService.handleServiceResponse(res, 'InternalStackOverflowService');
-    //     console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
-    //   })
-    //   .catch(err => devOpsService.handleServiceResponse(err));
-    // console.groupEnd();
-    
-    // console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
-    
-    console.group(chalk.blue.bold('\nProcessing GitHub...'))
-    await gitHubService.process()
-      .then(res => {
-        const { message } = devOpsService.handleServiceResponse(res, 'GitHubService');
-        console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
-      })
-      .catch(err => devOpsService.handleServiceResponse(err));
-    console.groupEnd();
+
+    if (enabledServices.stackOverflow) {
+      console.group(chalk.rgb(244, 128, 36).bold('\nProcessing StackOverflow...'))
+      await stackOverflowService.process()
+        .then(res => {
+          const response = devOpsService.handleServiceResponse(res, 'StackOverflowService');
+          console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+        })
+        .catch(err => devOpsService.handleServiceResponse(err));
+      console.groupEnd();
+      console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    }
+
+    if (enabledServices.internalStackOverflow) {
+      console.group(chalk.rgb(255, 176, 37).bold('\nProcessing Internal StackOverflow...'))
+      await internalStackOverflowService.process()
+        .then(res => {
+          const { message } = devOpsService.handleServiceResponse(res, 'InternalStackOverflowService');
+          console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+        })
+        .catch(err => devOpsService.handleServiceResponse(err));
+      console.groupEnd();
+      console.log(chalk.greenBright.bold('\n----------------------------------------------------------------------------------------------------------'));
+    }
+
+    if (enabledServices.github) {
+      console.group(chalk.blue.bold('\nProcessing GitHub...'))
+      await gitHubService.process()
+        .then(res => {
+          const { message } = devOpsService.handleServiceResponse(res, 'GitHubService');
+          console.warn(chalk.green.bold('Process status: ') + chalk.red.bold('Completed'));
+        })
+        .catch(err => devOpsService.handleServiceResponse(err));
+      console.groupEnd();
+    }
 
     await new Promise(async (resolve) => {
       const endTime = new Date();

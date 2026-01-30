@@ -55,7 +55,7 @@ async function generateIndexHtml(jsonData) {
           <div class="post-row">
             <div class="post-cell id">${issue['id']}</div>
             <div class="post-cell id">
-              <a href='${issue['Custom.IssueURL']}'>${issue['Custom.IssueID']}</a>
+              <a href='${issue['Custom.IssueURL']}' title='${issue['Custom.IssueURL']}' target='_blank'>${issue['Custom.IssueID']}</a>
             </div>
             <div class="post-cell title">${issue['System.Title']}</div>
           </div>
@@ -65,7 +65,7 @@ async function generateIndexHtml(jsonData) {
         postContentWithoutId = `
           <div class="post-row">
             <div class="post-cell id">
-              <a href='${issue['Custom.IssueURL']}'>${issue['Custom.IssueID']}</a>
+              <a href='${issue['Custom.IssueURL']}' title='${issue['Custom.IssueURL']}' target='_blank'>${issue['Custom.IssueID']}</a>
             </div>
             <div class="post-cell title">${issue['System.Title']}</div>
           </div>
