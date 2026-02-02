@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../../state';
-import { updateSettings, setSecret, checkSecret, getSecret } from '../../../api/client';
+import { updateSettings, setSecret, checkSecret, getSecret, deleteSecret } from '../../../api/client';
 
 const GROUPS = [
   { id: 'azureDevOps', label: 'Azure DevOps' },
@@ -47,7 +47,7 @@ export default function SettingsTab() {
     const data = {
       adoOrg: appSettings?.azureDevOps?.org || '',
       adoProject: appSettings?.azureDevOps?.project || '',
-      adoApiVersion: appSettings?.azureDevOps?.apiVersion || '6.1',
+      adoApiVersion: appSettings?.azureDevOps?.apiVersion || '',
       adoUsername: '',
       adoPat: '',
       githubToken: '',
@@ -102,9 +102,12 @@ export default function SettingsTab() {
   function isChanged(key) {
     if (SECRET_KEY_MAP[key]) {
       const currentValue = formData[key] || '';
-      const loadedValue = loadedSecrets[key] || '';
-      // Only changed if user typed something different from what was loaded
-      return currentValue !== '' && currentValue !== loadedValue;
+      // If we've revealed/loaded the secret, any difference (including clearing) is a change
+      if (key in loadedSecrets) {
+        return currentValue !== loadedSecrets[key];
+      }
+      // If not revealed yet, only changed if user typed something new
+      return currentValue !== '';
     }
     return formData[key] !== originalData[key];
   }
@@ -175,8 +178,12 @@ export default function SettingsTab() {
 
         if (field.isSecret) {
           const secretKey = SECRET_KEY_MAP[field.key];
-          if (secretKey && formData[field.key]) {
-            await setSecret(secretKey, formData[field.key]);
+          if (secretKey) {
+            if (formData[field.key]) {
+              await setSecret(secretKey, formData[field.key]);
+            } else if (field.key in loadedSecrets) {
+              await deleteSecret(secretKey);
+            }
           }
         }
       }
@@ -205,7 +212,6 @@ export default function SettingsTab() {
       }
 
       await refreshSettings();
-      await loadData();
       setVisibleFields({});
       setLoadedSecrets({});
       setHasUnsavedChanges(false);

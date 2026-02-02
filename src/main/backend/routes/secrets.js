@@ -64,6 +64,26 @@ async function deleteSecret(key) {
 }
 
 export async function secretsRoutes(fastify, options) {
+  fastify.post('/check', async (request, reply) => {
+    const { keys } = request.body;
+    
+    if (!Array.isArray(keys)) {
+      return reply.status(400).send({ error: 'Keys must be an array' });
+    }
+    
+    const results = {};
+    for (const key of keys) {
+      if (!SUPPORTED_KEYS.includes(key)) {
+        results[key] = false;
+        continue;
+      }
+      const value = await getSecret(key);
+      results[key] = value != null && value !== '';
+    }
+    
+    return results;
+  });
+
   fastify.get('/:key', async (request, reply) => {
     const { key } = request.params;
     

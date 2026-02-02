@@ -19,7 +19,7 @@ export const settingsModel = {
   azureDevOps: {
     org: '',
     project: '',
-    apiVersion: '6.1',
+    apiVersion: '',
   },
   github: {
     apiUrl: 'https://api.github.com/graphql',

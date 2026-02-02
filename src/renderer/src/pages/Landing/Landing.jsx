@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import { useApp } from '../../state';
 import { startQuery, getQueryStatus, cancelQuery, updateSettings } from '../../api/client';
 import { Results } from '../../components/Results/Results';
+import MissingFieldsIndicator from '../../components/MissingFieldsIndicator';
 import './Landing.css';
 
 function formatLastRun(timestamp) {
@@ -20,7 +21,7 @@ function formatLastRun(timestamp) {
 }
 
 export function Landing() {
-  const { settings, refreshSettings, isLoading: settingsLoading } = useApp();
+  const { settings, refreshSettings, isLoading: settingsLoading, configValidation } = useApp();
 
   const [isRunning, setIsRunning] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
@@ -68,10 +69,11 @@ export function Landing() {
           startHour: parseInt(hour, 10) || 10,
         },
       });
+      await refreshSettings();
     } catch (err) {
       console.error('Failed to save service options:', err);
     }
-  }, []);
+  }, [refreshSettings]);
 
   const handleServiceToggle = (service) => {
     const updated = { ...enabledServices, [service]: !enabledServices[service] };
@@ -165,6 +167,29 @@ export function Landing() {
   };
 
   const lastRunTimestamp = settings?.timestamp?.lastRun;
+
+  const isConfigValid = (() => {
+    if (!configValidation.isValid) return false;
+    
+    const repositories = settings?.repositories || {};
+    
+    if (enabledServices.github) {
+      const githubRepos = repositories.github || [];
+      if (!githubRepos.some((r) => r.enabled)) return false;
+    }
+    
+    if (enabledServices.stackOverflow) {
+      const soTags = repositories.stackOverflow || [];
+      if (!soTags.some((t) => t.enabled)) return false;
+    }
+    
+    if (enabledServices.internalStackOverflow) {
+      const internalTags = repositories.internalStackOverflow || [];
+      if (!internalTags.some((t) => t.enabled)) return false;
+    }
+    
+    return true;
+  })();
 
   const handleExportResults = () => {
     if (!results || !results.index) return;
@@ -335,8 +360,9 @@ export function Landing() {
 
       <div className="action-section">
         <button
-          className={`run-button ${isRunning ? 'stop' : 'start'}`}
+          className={`run-button ${isRunning ? 'stop' : 'start'}${!isConfigValid && !isRunning ? ' disabled' : ''}`}
           onClick={handleRunTracker}
+          disabled={!isConfigValid && !isRunning}
         >
           {isRunning ? 'Stop Tracker' : 'Run Tracker'}
         </button>
@@ -349,6 +375,10 @@ export function Landing() {
           </button>
         )}
       </div>
+
+      {!isConfigValid && !isRunning && (
+        <MissingFieldsIndicator groupedErrors={configValidation.groupedErrors} />
+      )}
 
       {error && (
         <div className="error-message">
