@@ -198,7 +198,6 @@ export default function RepositoriesTab() {
         },
       });
       await refreshSettings();
-      loadData();
       setHasUnsavedChanges(false);
     } catch (err) {
       console.error('Failed to save repositories:', err);

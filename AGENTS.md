@@ -22,6 +22,12 @@ Support Tracker is an Electron desktop app that queries GitHub, Stack Overflow, 
 - `npm run build:electron` - Package Electron app
 - `npm start` - Run CLI version
 
+## Build Verification
+To verify builds on Windows, use semicolon chaining (PowerShell doesn't support &&):
+```powershell
+cd d:\work\support-tracker; npm run build:renderer
+```
+
 ## Key Patterns
 - Services accept `{ signal }` option for AbortController cancellation
 - Settings stored in `src/store/db/settings.json`

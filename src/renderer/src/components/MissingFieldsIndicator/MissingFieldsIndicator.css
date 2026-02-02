@@ -1,0 +1,75 @@
+.missing-fields-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.missing-fields-group {
+  position: relative;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.missing-fields-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: background-color 0.15s;
+  box-sizing: border-box;
+  margin: 0;
+  transform: none;
+  box-shadow: none;
+}
+
+.missing-fields-header:hover {
+  background-color: var(--bg-tertiary);
+  transform: none;
+  box-shadow: none;
+}
+
+.missing-fields-arrow {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  width: 16px;
+}
+
+.missing-fields-label {
+  flex: 1;
+}
+
+.missing-fields-list {
+  margin: 0;
+  padding: 0 12px 8px 32px;
+  list-style: none;
+}
+
+.missing-fields-item {
+  font-size: 12px;
+  color: var(--danger);
+  padding: 3px 0;
+  position: relative;
+}
+
+.missing-fields-item::before {
+  content: '•';
+  position: absolute;
+  left: -14px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--danger);
+}

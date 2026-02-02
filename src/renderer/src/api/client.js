@@ -46,9 +46,22 @@ export function setSecret(key, value) {
   });
 }
 
-export function deleteSecret(key) {
-  return apiFetch(`/api/secrets/${encodeURIComponent(key)}`, {
+export async function deleteSecret(key) {
+  const baseUrl = await getBaseUrl();
+  const response = await fetch(`${baseUrl}/api/secrets/${encodeURIComponent(key)}`, {
     method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export function checkSecrets(keys) {
+  return apiFetch('/api/secrets/check', {
+    method: 'POST',
+    body: JSON.stringify({ keys }),
   });
 }
 
