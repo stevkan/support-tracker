@@ -281,6 +281,51 @@ class GitHubService extends DevOpsService {
       }`,
     };
   }
+
+  /**
+   * Validates a GitHub token by calling the user endpoint.
+   * @param {string} token - The GitHub token to validate
+   * @param {Object} options - { signal } for AbortController
+   * @returns {Promise<{ valid: boolean, error?: string }>}
+   */
+  static async validateToken(token, options = {}) {
+    const { signal } = options;
+
+    if (!token) {
+      return { valid: false, error: 'GitHub token is required' };
+    }
+
+    try {
+      const response = await axios.get('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+        signal,
+        timeout: 10000,
+      });
+
+      if (response.status === 200 && response.data?.login) {
+        return { valid: true };
+      }
+      return { valid: false, error: 'Unexpected response from GitHub' };
+    } catch (error) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return { valid: false, error: 'Invalid or expired GitHub token' };
+        }
+        if (status === 403) {
+          return { valid: false, error: 'GitHub token lacks required permissions' };
+        }
+        return { valid: false, error: `GitHub API error: ${status}` };
+      }
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        return { valid: false, error: 'Unable to connect to GitHub' };
+      }
+      return { valid: false, error: error.message || 'Validation failed' };
+    }
+  }
 }
 
 export { GitHubService };

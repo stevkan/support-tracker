@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { settingsRoutes } from './routes/settings.js';
 import { secretsRoutes } from './routes/secrets.js';
 import { queryRoutes } from './routes/query.js';
+import { validationRoutes } from './routes/validation.js';
 
 export async function buildServer() {
   const fastify = Fastify({ logger: true });
@@ -12,6 +13,7 @@ export async function buildServer() {
   fastify.register(settingsRoutes, { prefix: '/api/settings' });
   fastify.register(secretsRoutes, { prefix: '/api/secrets' });
   fastify.register(queryRoutes, { prefix: '/api/queries' });
+  fastify.register(validationRoutes, { prefix: '/api/validate' });
   
   return fastify;
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../../state';
-import { updateSettings, setSecret, checkSecret, getSecret, deleteSecret } from '../../../api/client';
+import { updateSettings, setSecret, checkSecret, getSecret, deleteSecret, validateAzureDevOpsPat, validateGitHubToken, validateStackOverflowKey } from '../../../api/client';
 
 const GROUPS = [
   { id: 'azureDevOps', label: 'Azure DevOps' },
@@ -17,7 +17,7 @@ const SECRET_KEY_MAP = {
 };
 
 export default function SettingsTab() {
-  const { settings: appSettings, refreshSettings, setHasUnsavedChanges } = useApp();
+  const { settings: appSettings, refreshSettings, setHasUnsavedChanges, recheckPatStatus } = useApp();
 
   const [activeGroup, setActiveGroup] = useState('azureDevOps');
   const [formData, setFormData] = useState({
@@ -38,6 +38,8 @@ export default function SettingsTab() {
   const [visibleFields, setVisibleFields] = useState({});
   const [loadedSecrets, setLoadedSecrets] = useState({});
   const [pendingGroupSwitch, setPendingGroupSwitch] = useState(null);
+  const [validationStatus, setValidationStatus] = useState({ status: null, message: '' });
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -170,8 +172,143 @@ export default function SettingsTab() {
 
   async function handleSave() {
     setSaving(true);
+    setValidationStatus({ status: null, message: '' });
+    
     try {
       const fields = getFieldsForGroup(activeGroup);
+
+      // For Azure DevOps, validate credentials before saving
+      if (activeGroup === 'azureDevOps') {
+        const patInForm = formData.adoPat && formData.adoPat.trim() !== '';
+        const orgInForm = formData.adoOrg && formData.adoOrg.trim() !== '';
+        const usernameInForm = formData.adoUsername && formData.adoUsername.trim() !== '';
+        
+        const patChanged = isChanged('adoPat');
+        const orgChanged = isChanged('adoOrg');
+        const usernameChanged = isChanged('adoUsername');
+        
+        // Validate email format for username if it was changed
+        if (usernameInForm) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(formData.adoUsername.trim())) {
+            setValidationStatus({ status: 'error', message: 'Username must be a valid email address' });
+            setSaving(false);
+            return;
+          }
+        }
+        
+        // Validate if any credential field has a value in the form and something changed
+        if ((patInForm || orgInForm || usernameInForm) && (patChanged || orgChanged || usernameChanged)) {
+          setValidating(true);
+          setValidationStatus({ status: 'validating', message: 'Validating credentials...' });
+          
+          // Get the values to validate
+          const org = formData.adoOrg || appSettings?.azureDevOps?.org;
+          let username = formData.adoUsername;
+          let pat = formData.adoPat;
+          
+          // If username wasn't entered in form but exists in secrets, fetch it
+          if (!username && !usernameInForm && secretStatus.adoUsername) {
+            try {
+              const result = await getSecret('azure-devops-username');
+              username = result.value || '';
+            } catch (err) {
+              console.error('Failed to fetch existing username:', err);
+              username = '';
+            }
+          }
+          
+          // If PAT wasn't entered in form but exists in secrets, fetch it
+          if (!pat && !patInForm && secretStatus.adoPat) {
+            try {
+              const result = await getSecret('azure-devops-pat');
+              pat = result.value;
+            } catch (err) {
+              console.error('Failed to fetch existing PAT:', err);
+            }
+          }
+          
+          if (org && pat) {
+            try {
+              const apiVersion = formData.adoApiVersion || appSettings?.azureDevOps?.apiVersion;
+              const validation = await validateAzureDevOpsPat(org, username || '', pat, apiVersion);
+              setValidating(false);
+              
+              if (!validation.valid) {
+                setValidationStatus({ status: 'error', message: validation.error || 'Invalid credentials' });
+                setSaving(false);
+                return;
+              }
+              setValidationStatus({ status: 'success', message: 'Credentials validated successfully' });
+            } catch (err) {
+              setValidating(false);
+              setValidationStatus({ status: 'error', message: 'Failed to validate credentials' });
+              setSaving(false);
+              return;
+            }
+          }
+        }
+      }
+
+      // For API Keys, validate GitHub token and Stack Overflow key before saving
+      if (activeGroup === 'apiKeys') {
+        const githubTokenInForm = formData.githubToken && formData.githubToken.trim() !== '';
+        const stackOverflowKeyInForm = formData.stackOverflowKey && formData.stackOverflowKey.trim() !== '';
+        
+        const githubTokenChanged = isChanged('githubToken');
+        const stackOverflowKeyChanged = isChanged('stackOverflowKey');
+        
+        // Validate GitHub token if changed
+        if (githubTokenInForm && githubTokenChanged) {
+          setValidating(true);
+          setValidationStatus({ status: 'validating', message: 'Validating GitHub token...' });
+          
+          try {
+            const validation = await validateGitHubToken(formData.githubToken);
+            setValidating(false);
+            
+            if (!validation.valid) {
+              setValidationStatus({ status: 'error', message: validation.error || 'Invalid GitHub token' });
+              setSaving(false);
+              return;
+            }
+            setValidationStatus({ status: 'success', message: 'GitHub token validated' });
+          } catch (err) {
+            setValidating(false);
+            setValidationStatus({ status: 'error', message: 'Failed to validate GitHub token' });
+            setSaving(false);
+            return;
+          }
+        }
+        
+        // Validate Stack Overflow Enterprise key if changed
+        if (stackOverflowKeyInForm && stackOverflowKeyChanged) {
+          setValidating(true);
+          setValidationStatus({ status: 'validating', message: 'Validating Stack Overflow Enterprise key...' });
+          
+          try {
+            const validation = await validateStackOverflowKey(formData.stackOverflowKey);
+            setValidating(false);
+            
+            if (!validation.valid) {
+              setValidationStatus({ status: 'error', message: validation.error || 'Invalid Stack Overflow Enterprise key' });
+              setSaving(false);
+              return;
+            }
+            setValidationStatus({ status: 'success', message: 'Stack Overflow Enterprise key validated' });
+          } catch (err) {
+            setValidating(false);
+            setValidationStatus({ status: 'error', message: 'Failed to validate Stack Overflow Enterprise key' });
+            setSaving(false);
+            return;
+          }
+        }
+        
+        // If both were validated, show combined success message
+        if (githubTokenInForm && githubTokenChanged && stackOverflowKeyInForm && stackOverflowKeyChanged) {
+          setValidationStatus({ status: 'success', message: 'API keys validated successfully' });
+        }
+      }
 
       for (const field of fields) {
         if (!isChanged(field.key)) continue;
@@ -215,10 +352,17 @@ export default function SettingsTab() {
       setVisibleFields({});
       setLoadedSecrets({});
       setHasUnsavedChanges(false);
+      
+      // Recheck PAT status after saving Azure DevOps settings
+      if (activeGroup === 'azureDevOps') {
+        await recheckPatStatus();
+      }
     } catch (err) {
       console.error('Failed to save settings:', err);
+      setValidationStatus({ status: 'error', message: 'Failed to save settings' });
     } finally {
       setSaving(false);
+      setValidating(false);
     }
   }
 
@@ -302,13 +446,33 @@ export default function SettingsTab() {
       <div className="settings-content">
         <h3 className="settings-group-title">{currentGroup?.label}</h3>
         {currentFields.map(renderField)}
+        {validationStatus.status && (activeGroup === 'azureDevOps' || activeGroup === 'apiKeys') && (
+          <div className={`validation-status validation-${validationStatus.status}`}>
+            {validationStatus.status === 'validating' && (
+              <span className="validation-spinner"></span>
+            )}
+            {validationStatus.status === 'success' && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="20,6 9,17 4,12" />
+              </svg>
+            )}
+            {validationStatus.status === 'error' && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            )}
+            <span>{validationStatus.message}</span>
+          </div>
+        )}
         <div className="settings-actions">
           <button
             className="btn-primary"
             onClick={handleSave}
-            disabled={!hasGroupChanges(activeGroup) || saving}
+            disabled={!hasGroupChanges(activeGroup) || saving || validating}
           >
-            {saving ? 'Saving...' : 'Save'}
+            {validating ? 'Validating...' : saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

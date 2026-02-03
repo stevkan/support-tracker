@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getSettings, getSecret, checkSecrets } from '../api/client';
+import { getSettings, getSecret, checkSecrets, checkAzureDevOpsStatus } from '../api/client';
 
 const AppContext = createContext(null);
 
@@ -11,6 +11,7 @@ export function AppProvider({ children }) {
   const [theme, setThemeState] = useState('system');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [configValidation, setConfigValidation] = useState({ isValid: false, errors: [], groupedErrors: {} });
+  const [patStatus, setPatStatus] = useState({ checked: false, valid: null, error: null });
 
   const applyTheme = useCallback((newTheme) => {
     if (newTheme === 'system') {
@@ -128,6 +129,14 @@ export function AppProvider({ children }) {
 
       // Validate configuration for Run Tracker button
       await validateConfiguration(data);
+      
+      // Validate PAT on startup
+      try {
+        const patResult = await checkAzureDevOpsStatus();
+        setPatStatus({ checked: true, valid: patResult.valid, error: patResult.error || null });
+      } catch (err) {
+        setPatStatus({ checked: true, valid: false, error: 'Failed to validate PAT' });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -148,6 +157,15 @@ export function AppProvider({ children }) {
     applyTheme(newTheme);
   }, [applyTheme]);
 
+  const recheckPatStatus = useCallback(async () => {
+    try {
+      const patResult = await checkAzureDevOpsStatus();
+      setPatStatus({ checked: true, valid: patResult.valid, error: patResult.error || null });
+    } catch (err) {
+      setPatStatus({ checked: true, valid: false, error: 'Failed to validate PAT' });
+    }
+  }, []);
+
   const value = {
     settings,
     isLoading,
@@ -156,9 +174,11 @@ export function AppProvider({ children }) {
     theme,
     hasUnsavedChanges,
     configValidation,
+    patStatus,
     refreshSettings,
     setTheme,
     setHasUnsavedChanges,
+    recheckPatStatus,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,6 +1,6 @@
 {
   "name": "support-tracker",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "",
   "type": "module",
   "main": "src/index.js",
@@ -15,7 +15,7 @@
     "dev:renderer": "vite --config src/renderer/vite.config.js",
     "build:renderer": "vite build --config src/renderer/vite.config.js",
     "build:electron": "npm run build:renderer && electron-builder",
-    "package": "npm run build:electron",
+    "package": "npm run update-version &&npm run build:electron",
     "update-version": "node scripts/update-version.js"
   },
   "dependencies": {
