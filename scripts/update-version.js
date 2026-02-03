@@ -15,7 +15,7 @@ const versionFileContent = `export const APP_VERSION = '${version}';\n`;
 
 let currentContent = '';
 try {
-  currentContent = readFileSync(versionFilePath, 'utf-8');
+  currentContent = readFileSync(versionFilePath, 'utf-8').replace(/\r\n/g, '\n');
 } catch (e) {
   // File doesn't exist yet
 }
