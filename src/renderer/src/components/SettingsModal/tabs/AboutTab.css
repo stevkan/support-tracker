@@ -1,0 +1,58 @@
+.about-tab {
+  max-width: 400px;
+}
+
+.about-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.about-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.about-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.about-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.about-value {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.about-link {
+  font-size: 14px;
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
+.about-description {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.about-description p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}

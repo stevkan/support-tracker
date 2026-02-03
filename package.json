@@ -1,6 +1,6 @@
 {
   "name": "support-tracker",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "",
   "type": "module",
   "main": "src/index.js",
@@ -10,12 +10,13 @@
   "scripts": {
     "cli": "node src/index.js",
     "migrate:secrets": "dotenvx run --env-file .env -- node src/scripts/migrateSecrets.js",
-    "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev": "npm run update-version && concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:electron": "cross-env NODE_ENV=development electron src/main/main.js",
     "dev:renderer": "vite --config src/renderer/vite.config.js",
     "build:renderer": "vite build --config src/renderer/vite.config.js",
     "build:electron": "npm run build:renderer && electron-builder",
-    "package": "npm run build:electron"
+    "package": "npm run build:electron",
+    "update-version": "node scripts/update-version.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",
