@@ -231,3 +231,13 @@ button:focus-visible,
 .loading {
   animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* Hide scrollbars while maintaining scroll functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
