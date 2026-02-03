@@ -209,6 +209,62 @@ class DevOpsService extends ErrorHandler {
       });
     }
   }
+
+  /**
+   * Validates Azure DevOps credentials by calling an auth-required API endpoint.
+   * Uses the projects endpoint which always requires valid authentication.
+   * @param {Object} credentials - { org, username, pat, apiVersion }
+   * @param {Object} options - { signal } for AbortController
+   * @returns {Promise<{ valid: boolean, error?: string }>}
+   */
+  async validateCredentials(credentials, options = {}) {
+    const { signal } = options;
+    const { org, username, pat, apiVersion } = credentials;
+
+    if (!org || !pat) {
+      return { valid: false, error: 'Organization and PAT are required' };
+    }
+
+    const encoded = this.getEncodedCredentials(username || '', pat);
+    const version = apiVersion || '6.1';
+
+    const config = {
+      method: 'GET',
+      url: `https://dev.azure.com/${org}/_apis/projects?$top=1&api-version=${version}`,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Basic ' + encoded,
+      },
+      signal,
+      timeout: 10000,
+    };
+
+    try {
+      const response = await axios.request(config);
+      if (response.status === 200 && response.data) {
+        return { valid: true };
+      }
+      return { valid: false, error: `Unexpected response: ${response.status}` };
+    } catch (error) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return { valid: false, error: 'Invalid or expired PAT' };
+        }
+        if (status === 403) {
+          return { valid: false, error: 'PAT lacks required permissions' };
+        }
+        if (status === 404) {
+          return { valid: false, error: 'Organization not found' };
+        }
+        return { valid: false, error: `API error: ${status}` };
+      }
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        return { valid: false, error: 'Unable to connect to Azure DevOps' };
+      }
+      return { valid: false, error: error.message || 'Validation failed' };
+    }
+  }
 }
 
 export { DevOpsService };

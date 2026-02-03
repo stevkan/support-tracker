@@ -83,3 +83,37 @@ export function cancelQuery(jobId) {
     body: JSON.stringify({}),
   });
 }
+
+// Validation API
+export function validateAzureDevOpsPat(org, username, pat, apiVersion) {
+  return apiFetch('/api/validate/azure-devops', {
+    method: 'POST',
+    body: JSON.stringify({ org, username, pat, apiVersion }),
+  });
+}
+
+export function checkAzureDevOpsStatus() {
+  return apiFetch('/api/validate/azure-devops');
+}
+
+export function validateGitHubToken(token) {
+  return apiFetch('/api/validate/github', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function checkGitHubStatus() {
+  return apiFetch('/api/validate/github');
+}
+
+export function validateStackOverflowKey(apiKey) {
+  return apiFetch('/api/validate/stackoverflow', {
+    method: 'POST',
+    body: JSON.stringify({ apiKey }),
+  });
+}
+
+export function checkStackOverflowStatus() {
+  return apiFetch('/api/validate/stackoverflow');
+}

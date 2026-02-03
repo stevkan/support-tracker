@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { StackOverflowService } from './StackOverflowService.js';
 import { sleep, checkAborted } from '../utils.js';
 
@@ -64,6 +65,54 @@ class InternalStackOverflowService extends StackOverflowService {
 
   getUrl(number) {
     return `https://stackoverflow.microsoft.com/questions/${number}`;
+  }
+
+  /**
+   * Validates a Stack Overflow Enterprise API key.
+   * @param {string} apiKey - The API key to validate
+   * @param {Object} options - { signal } for AbortController
+   * @returns {Promise<{ valid: boolean, error?: string }>}
+   */
+  static async validateApiKey(apiKey, options = {}) {
+    const { signal } = options;
+
+    if (!apiKey) {
+      return { valid: false, error: 'Stack Overflow Enterprise key is required' };
+    }
+
+    try {
+      const response = await axios.get('https://stackoverflow.microsoft.com/api/2.3/me', {
+        headers: {
+          'X-API-Key': apiKey,
+          'User-Agent': 'InternalStackOverflowService',
+        },
+        signal,
+        timeout: 10000,
+      });
+
+      if (response.status === 200 && response.data?.items) {
+        return { valid: true };
+      }
+      return { valid: false, error: 'Unexpected response from Stack Overflow Enterprise' };
+    } catch (error) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return { valid: false, error: 'Invalid or expired Stack Overflow Enterprise key' };
+        }
+        if (status === 403) {
+          return { valid: false, error: 'Stack Overflow Enterprise key lacks required permissions' };
+        }
+        if (status === 400) {
+          return { valid: false, error: 'Invalid Stack Overflow Enterprise key' };
+        }
+        return { valid: false, error: `Stack Overflow Enterprise API error: ${status}` };
+      }
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        return { valid: false, error: 'Unable to connect to Stack Overflow Enterprise' };
+      }
+      return { valid: false, error: error.message || 'Validation failed' };
+    }
   }
 }
 
