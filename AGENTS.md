@@ -21,6 +21,9 @@ Support Tracker is an Electron desktop app that queries GitHub, Stack Overflow, 
 - `npm run build:renderer` - Build React app
 - `npm run build:electron` - Package Electron app
 - `npm start` - Run CLI version
+- `npm test` - Run tests once
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
 
 ## Build Verification
 To verify builds on Windows, use semicolon chaining (PowerShell doesn't support &&):
@@ -42,4 +45,18 @@ cd d:\work\support-tracker; npm run build:renderer
 - `POST /api/queries/:jobId/cancel` - Cancel job
 
 ## Testing
-No test framework currently configured.
+Tests are located in `/tests` with structure mirroring source:
+```
+tests/
+├── unit/
+│   └── shared/domain/
+│       ├── utils.test.js
+│       └── services/
+│           ├── DevOpsService.test.js
+│           ├── ErrorHandler.test.js
+│           ├── GitHubService.test.js
+│           ├── InternalStackOverflowService.test.js
+│           └── StackOverflowService.test.js
+```
+
+Uses **Vitest** with mocked dependencies. Run `npm test` to execute.
