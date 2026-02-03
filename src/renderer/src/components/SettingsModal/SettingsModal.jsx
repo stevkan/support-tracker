@@ -4,12 +4,16 @@ import Modal from '../Modal/Modal';
 import SettingsTab from './tabs/SettingsTab';
 import AppearanceTab from './tabs/AppearanceTab';
 import RepositoriesTab from './tabs/RepositoriesTab';
+import DeveloperToolsTab from './tabs/DeveloperToolsTab';
+import AboutTab from './tabs/AboutTab';
 import './SettingsModal.css';
 
 const TABS = [
   { id: 'settings', label: 'Settings' },
   { id: 'repositories', label: 'Repositories' },
   { id: 'appearance', label: 'Appearance' },
+  { id: 'devtools', label: 'Developer Tools' },
+  { id: 'about', label: 'About' },
 ];
 
 export default function SettingsModal({ isOpen, onClose }) {
@@ -53,6 +57,8 @@ export default function SettingsModal({ isOpen, onClose }) {
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'repositories' && <RepositoriesTab />}
           {activeTab === 'appearance' && <AppearanceTab />}
+          {activeTab === 'devtools' && <DeveloperToolsTab />}
+          {activeTab === 'about' && <AboutTab />}
         </div>
         {showCloseConfirm && (
           <div className="confirm-overlay">

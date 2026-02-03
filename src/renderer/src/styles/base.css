@@ -65,19 +65,17 @@ button,
   border-radius: var(--button-radius);
   box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
   user-select: none;
 }
 
 button:hover,
 .btn:hover {
-  transform: translateY(-1px);
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 button:active,
 .btn:active {
-  transform: translateY(0);
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -85,7 +83,6 @@ button:disabled,
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 /* Secondary button variant */

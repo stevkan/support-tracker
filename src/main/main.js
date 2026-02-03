@@ -20,6 +20,7 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     maximizable: true,
+    autoHideMenuBar: true,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -28,6 +29,8 @@ async function createWindow() {
     },
     show: false,
   });
+
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.maximize();
@@ -58,6 +61,9 @@ async function initialize() {
     console.log(`Backend server running on port ${serverInfo.port}`);
 
     ipcMain.handle('get-api-port', () => serverInfo.port);
+    ipcMain.handle('reload', () => mainWindow?.webContents.reload());
+    ipcMain.handle('force-reload', () => mainWindow?.webContents.reloadIgnoringCache());
+    ipcMain.handle('toggle-dev-tools', () => mainWindow?.webContents.toggleDevTools());
 
     await createWindow();
   } catch (error) {
