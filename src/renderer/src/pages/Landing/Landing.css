@@ -185,6 +185,9 @@
 
 .export-button:hover {
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
 }
 
 .export-button:active {
