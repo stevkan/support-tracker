@@ -1,5 +1,5 @@
-import { secretsStore } from '../store/secretsStore.js';
-import { jsonStore } from '../store/jsonStore.js';
+import { secretsStore } from '../src/store/secretsStore.js';
+import { jsonStore } from '../src/store/jsonStore.js';
 
 console.log('Migrating secrets from .env to OS keychain...');
 await secretsStore.migrateFromEnv();
