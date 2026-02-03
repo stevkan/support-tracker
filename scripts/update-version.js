@@ -13,6 +13,16 @@ const version = packageJson.version;
 
 const versionFileContent = `export const APP_VERSION = '${version}';\n`;
 
-writeFileSync(versionFilePath, versionFileContent, 'utf-8');
+let currentContent = '';
+try {
+  currentContent = readFileSync(versionFilePath, 'utf-8');
+} catch (e) {
+  // File doesn't exist yet
+}
 
-console.log(`Updated version to ${version}`);
+if (currentContent === versionFileContent) {
+  console.log(`Version ${version} is already up to date`);
+} else {
+  writeFileSync(versionFilePath, versionFileContent, 'utf-8');
+  console.log(`Updated version to ${version}`);
+}
