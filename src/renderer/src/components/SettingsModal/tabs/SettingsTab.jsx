@@ -75,8 +75,29 @@ export default function SettingsTab() {
   }
 
   function handleChange(key, value) {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    setHasUnsavedChanges(true);
+    setFormData((prev) => {
+      const newFormData = { ...prev, [key]: value };
+      
+      // Compute if there are actual changes from stored values
+      const fields = getFieldsForGroup(activeGroup);
+      const hasChanges = fields.some((f) => {
+        const fieldKey = f.key;
+        const currentValue = newFormData[fieldKey] || '';
+        
+        if (SECRET_KEY_MAP[fieldKey]) {
+          // For secrets: compare against loaded secret if revealed, otherwise only changed if non-empty
+          if (fieldKey in loadedSecrets) {
+            return currentValue !== loadedSecrets[fieldKey];
+          }
+          return currentValue !== '';
+        }
+        // For regular fields: compare against original data
+        return newFormData[fieldKey] !== originalData[fieldKey];
+      });
+      
+      setHasUnsavedChanges(hasChanges);
+      return newFormData;
+    });
   }
 
   async function toggleVisibility(key) {
