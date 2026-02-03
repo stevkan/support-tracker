@@ -69,11 +69,10 @@ export function Landing() {
           startHour: parseInt(hour, 10) || 10,
         },
       });
-      await refreshSettings();
     } catch (err) {
       console.error('Failed to save service options:', err);
     }
-  }, [refreshSettings]);
+  }, []);
 
   const handleServiceToggle = (service) => {
     const updated = { ...enabledServices, [service]: !enabledServices[service] };
