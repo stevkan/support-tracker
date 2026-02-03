@@ -17,7 +17,7 @@ class StackOverflowService extends DevOpsService {
   }
 
   async process(options = {}) {
-    const { signal } = options;
+    const { signal, onProgress } = options;
     const possibleDevOpsMatches = [];
     let existingIssuesCount = 0;
     const unassignedIssues = [];
@@ -25,11 +25,12 @@ class StackOverflowService extends DevOpsService {
     let issues = [];
 
     try {
-      const queue = this.tags.map((tag) => async () => this.getIssues(tag, options));
-
-      for (const task of queue) {
+      for (const tag of this.tags) {
         checkAborted(signal);
-        const result = await task();
+        if (onProgress) {
+          onProgress(tag);
+        }
+        const result = await this.getIssues(tag, { signal });
         if (result.length > 0) {
           items.push(...result);
         }

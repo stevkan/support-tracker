@@ -133,7 +133,14 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       });
 
       const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient, deps);
-      const soResult = await stackOverflowService.process({ signal });
+      const soResult = await stackOverflowService.process({
+        signal,
+        onProgress: (tag) => {
+          updateJob(jobId, {
+            progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Stack Overflow/${tag}` },
+          });
+        },
+      });
       results.services.stackOverflow = soResult;
       serviceIndex++;
     }
@@ -149,7 +156,14 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         telemetryClient,
         deps
       );
-      const isoResult = await internalStackOverflowService.process({ signal });
+      const isoResult = await internalStackOverflowService.process({
+        signal,
+        onProgress: (tag) => {
+          updateJob(jobId, {
+            progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Internal Stack Overflow/${tag}` },
+          });
+        },
+      });
       results.services.internalStackOverflow = isoResult;
       serviceIndex++;
     }
@@ -160,7 +174,14 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       });
 
       const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient, deps);
-      const ghResult = await gitHubService.process({ signal });
+      const ghResult = await gitHubService.process({
+        signal,
+        onProgress: (repo) => {
+          updateJob(jobId, {
+            progress: { current: serviceIndex, total: servicesToRun.length, currentService: `GitHub/${repo}` },
+          });
+        },
+      });
       results.services.github = ghResult;
       serviceIndex++;
     }

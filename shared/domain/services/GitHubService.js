@@ -18,7 +18,7 @@ class GitHubService extends DevOpsService {
   }
 
   async process(options = {}) {
-    const { signal } = options;
+    const { signal, onProgress } = options;
     const existingIssuesDetails = [];
     let existingIssuesCount = 0;
     const unassignedIssues = [];
@@ -26,10 +26,12 @@ class GitHubService extends DevOpsService {
     let issues = [];
 
     try {
-      const queue = this.repositories.map((repository) => async () => this.getIssues(repository, { signal }));
-      for (const task of queue) {
+      for (const repository of this.repositories) {
         checkAborted(signal);
-        const result = await task();
+        if (onProgress) {
+          onProgress(repository.repo);
+        }
+        const result = await this.getIssues(repository, { signal });
         if (result.length > 0) {
           items.push(...result);
         }
