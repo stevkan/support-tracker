@@ -387,8 +387,22 @@
   box-shadow: none;
 }
 
+.btn-delete {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
 .btn-delete:hover {
-  color: #ef4444;
+  color: #ffffff;
+  background-color: var(--accent-color, #3b82f6);
+  box-shadow: none;
+}
+
+.btn-delete:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Validation Status */

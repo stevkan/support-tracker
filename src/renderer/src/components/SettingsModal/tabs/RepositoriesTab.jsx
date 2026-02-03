@@ -295,7 +295,7 @@ export default function RepositoriesTab() {
           />
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-primary"
             onClick={handleAdd}
             disabled={!newItemInput.trim()}
           >
