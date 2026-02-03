@@ -60,23 +60,31 @@ button,
   font-weight: 500;
   line-height: 1.4;
   color: #ffffff;
-  background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
   border: none;
   border-radius: var(--button-radius);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: transform 0.1s, box-shadow 0.1s;
   user-select: none;
 }
 
 button:hover,
 .btn:hover {
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
 }
 
 button:active,
 .btn:active {
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translate(2px, 2px);
+  box-shadow: 
+    2px 2px 0 #1e40af,
+    3px 3px 4px rgba(0, 0, 0, 0.15);
 }
 
 button:disabled,
@@ -85,11 +93,53 @@ button:disabled,
   cursor: not-allowed;
 }
 
+button:disabled:hover,
+.btn:disabled:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  transform: none;
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:disabled:hover {
+  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+  transform: none;
+  box-shadow: 
+    4px 4px 0 #374151,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:disabled:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  transform: none;
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
 /* Secondary button variant */
 .btn-secondary {
   color: var(--text-primary);
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+  border: none;
+  box-shadow: 
+    4px 4px 0 #374151,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+  box-shadow: 
+    4px 4px 0 #374151,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 
+    2px 2px 0 #374151,
+    3px 3px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Danger button variant */
@@ -104,8 +154,25 @@ button:disabled,
 
 /* Primary button variant */
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
   color: #ffffff;
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 
+    4px 4px 0 #1e40af,
+    6px 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 
+    2px 2px 0 #1e40af,
+    3px 3px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Input/Form Styling */
