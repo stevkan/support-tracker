@@ -80,6 +80,7 @@ class GitHubService extends DevOpsService {
         }
 
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
+          unassignedIssues.push(issue);
           continue;
         }
 

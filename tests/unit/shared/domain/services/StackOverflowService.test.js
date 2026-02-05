@@ -1,8 +1,21 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { StackOverflowService } from '../../../../../shared/domain/services/StackOverflowService.js';
 
-vi.mock('axios');
+vi.mock('axios', () => {
+  const mockAxios = vi.fn();
+  mockAxios.get = vi.fn();
+  mockAxios.post = vi.fn();
+  mockAxios.request = vi.fn();
+  class MockAxiosError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'AxiosError';
+      this.isAxiosError = true;
+    }
+  }
+  mockAxios.AxiosError = MockAxiosError;
+  return { default: mockAxios, AxiosError: MockAxiosError };
+});
 
 const createMockQuestion = (id, title = `Question ${id}`) => ({
   question_id: id,
@@ -20,7 +33,7 @@ describe('StackOverflowService', () => {
   let mockTelemetryClient;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     mockSettingsDb = {
       read: vi.fn().mockResolvedValue({}),

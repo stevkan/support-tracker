@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 
 vi.mock('axios', () => {
@@ -720,15 +719,23 @@ describe('GitHubService', () => {
       expect(result.status).toBe(200);
     });
 
-    it('should return 204 when no existing work items found (continues past all issues)', async () => {
+    it('should add issue to DevOps when no existing work items found', async () => {
       const mockIssues = [createMockGitHubIssue(12345, 'New GitHub Issue')];
       axios.mockResolvedValue({ status: 200, data: { data: { search: { edges: mockIssues } } } });
 
-      axios.request.mockResolvedValueOnce({ status: 200, data: { workItems: [] } });
+      axios.request
+        .mockResolvedValueOnce({ status: 200, data: { workItems: [] } })
+        .mockResolvedValueOnce({ status: 200, data: { id: 999 } });
 
       const result = await processService.process();
 
-      expect(result).toEqual({ status: 204, message: 'No new issues to add' });
+      expect(axios.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('_apis/wit/workitems'),
+        })
+      );
+      expect(result.status).toBe(200);
     });
 
     it('should update issuesDb with found issues', async () => {

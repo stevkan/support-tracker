@@ -1,8 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { DevOpsService } from '../../../../../shared/domain/services/DevOpsService.js';
 
-vi.mock('axios');
+vi.mock('axios', () => {
+  const mockAxios = vi.fn();
+  mockAxios.get = vi.fn();
+  mockAxios.post = vi.fn();
+  mockAxios.request = vi.fn();
+  class MockAxiosError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'AxiosError';
+      this.isAxiosError = true;
+    }
+  }
+  mockAxios.AxiosError = MockAxiosError;
+  return { default: mockAxios, AxiosError: MockAxiosError };
+});
 
 describe('DevOpsService', () => {
   let service;
@@ -19,7 +32,7 @@ describe('DevOpsService', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     mockCredentialService = {
       getAzureDevOpsUsername: vi.fn().mockResolvedValue('testuser'),
