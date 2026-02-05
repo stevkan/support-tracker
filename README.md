@@ -1,94 +1,95 @@
 # Support Tracker
 
-## Business logic for pulling issues
+**Current Version**: [v2.8.2](https://github.com/stevkan/support-tracker/releases/tag/2.8.2)
 
-### Stack Overflow
-**Monitored Tags:**
-- adaptive-cards
-- azure-bot-service
-- botframework
-- direct-line-botframework
-- luis
-- qnamaker
-- web-chat
+An Electron desktop app (with CLI) that queries GitHub, Stack Overflow, and Internal Stack Overflow for issues and creates Azure DevOps work items.
 
-### Internal Stack Overflow
-**Monitored Tags:**
-- azure-bot-service
-- bot
-- bot-framework
-- luis.ai
+## Tech Stack
 
-### GitHub
-**Monitored Microsoft/MicrosoftDocs Repositories:**
-- botbuilder-azure
-- botbuilder-cognitiveservices
-- botbuilder-dotnet
-- botbuilder-java
-- botbuilder-js
-- botbuilder-python
-- botbuilder-samples
-- botbuilder-tools
-- botbuilder-v3
-- botframework-cli
-- botframework-composer
-- botframework-emulator
-- botframework-directlinejs
-- botframework-solutions (Tag: Support)
-- botframework-services
-- botframework-sdk (Ignored Tag: TeamsSDK)
-- botframework-webchat
-- bot-docs team (Tag: support, Org: MicrosoftDocs)
+- **Frontend**: React 18 + Vite
+- **Backend**: Fastify (Electron main process)
+- **Desktop**: Electron
+- **Storage**: keytar (OS credentials), storaje-db (JSON)
 
----
+## Project Structure
 
-### Environment Variables
-| Variable Name | Description |
-| --- | --- |
-| `AZURE_DEVOPS_ORG` | Azure DevOps Organization |
-| `AZURE_DEVOPS_PROJECT` | Azure DevOps Project |
-| `AZURE_DEVOPS_API_VERSION` | Azure DevOps API Version |
-| `APPINSIGHTS_INSTRUMENTATION_KEY` | Application Insights Instrumentation Key |
-| `GITHUB_TOKEN` | GitHub Token |
-| `GITHUB_API_URL` | GitHub API URL |
-| `STACK_OVERFLOW_ENTERPRISE_KEY` | Stack Overflow Enterprise Key |
+```
+src/
+├── main/            # Electron main process + Fastify server
+│   └── backend/     # API routes (queries, settings, secrets)
+├── renderer/        # React SPA (Vite)
+│   └── src/
+│       ├── components/  # UI components (Results, SettingsModal, TopBar, etc.)
+│       ├── pages/       # Landing page
+│       ├── api/         # API client
+│       └── state/       # State management
+├── store/           # Storage (jsonStore, secretsStore, credentialService)
+└── index.js         # CLI entry point
+shared/
+└── domain/
+    └── services/    # DevOps, GitHub, StackOverflow, InternalStackOverflow
+```
 
-### Command Line Arguments
-| Argument | Description |
-| --- | --- |
-| `help` | Display help information |
-| `help <command>` | Display help information for a specific command |
-| `set-services` | Enable/disable query services (use `--service` or `--no-service`) |
-| `set-use-test-data` | Enables/disables the use of test data [Default: false] |
-| `set-verbosity` | Enables/disables verbose logging [Default: false] |
-| `set-username` | Set the Azure DevOps username |
-| `set-pat` | Set the Azure DevOps Personal Access Token |
+## Getting Started
 
-Example: `npm run cli set-services --github --no-stackOverflow --no-internalStackOverflow`
-
-> **Note:** Query parameters (days to query, start hour) are configured via the desktop app UI. The CLI respects these settings when run.
-
-### Building the application
 ```bash
 npm install
 ```
 
-### Running the Desktop App (Electron)
+### Desktop App (Electron)
 
-**Development mode** (with hot reload):
 ```bash
-npm run dev
+npm run dev         # Development with hot reload
+npm run package     # Build installer
 ```
 
-**Build installer**:
+### CLI
+
 ```bash
-npm run package
+npm run cli                     # Run query
+npm run cli set-username <user> # Set Azure DevOps username
+npm run cli set-pat <pat>       # Set Azure DevOps PAT
+npm run cli set-services --github --no-stackOverflow --no-internalStackOverflow
+npm run cli set-use-test-data true
+npm run cli set-verbosity true
 ```
 
-### Running the CLI
+> Query parameters (days to query, start hour) are configured via the desktop app UI. The CLI respects these settings.
+
+## API Endpoints (Fastify)
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET/PATCH` | `/api/settings` | Settings CRUD |
+| `GET/PUT/DELETE` | `/api/secrets/:key` | Secrets management |
+| `POST` | `/api/queries` | Start query job |
+| `GET` | `/api/queries/:jobId` | Get job status |
+| `POST` | `/api/queries/:jobId/cancel` | Cancel job |
+
+## Environment Variables
+
+Configured via the desktop app Settings UI or `.env` file (for `npm run migrate:secrets`).
+
+| Variable | Description |
+| --- | --- |
+| `AZURE_DEVOPS_ORG` | Azure DevOps Organization |
+| `AZURE_DEVOPS_PROJECT` | Azure DevOps Project |
+| `AZURE_DEVOPS_API_VERSION` | API Version (`6.1` or `7.1`) |
+| `APPINSIGHTS_INSTRUMENTATION_KEY` | Application Insights key |
+| `GITHUB_TOKEN` | GitHub Personal Access Token |
+| `GITHUB_API_URL` | GitHub API URL |
+| `STACK_OVERFLOW_ENTERPRISE_KEY` | Stack Overflow Enterprise key |
+
+## Testing
+
 ```bash
-npm run cli
+npm test             # Run tests once
+npm run test:watch   # Watch mode
+npm run test:coverage # With coverage
 ```
 
-### Adjusting test data options
-In each service (Stack Overflow, Azure DevOps, GitHub), located in the `getIssues()` method, there are data sets represented by both the `emptyData` and `testData` variables. Either of these can be edited and/or assigned as the mock data used to simulate the responses from the services. This is enabled via the `set-use-test-data` command line argument.
+Tests use **Vitest** and are located in `tests/`.
+
+## License
+
+[MIT](LICENSE)

@@ -1,7 +1,8 @@
 {
   "name": "support-tracker",
   "version": "2.8.2",
-  "description": "",
+  "description": "An Electron app to track support tickets and generate reports",
+  "license": "MIT",
   "type": "module",
   "main": "src/index.js",
   "bin": {
