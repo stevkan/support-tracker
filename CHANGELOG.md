@@ -2,6 +2,21 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.8.2] - 2026-02-05
+
+### Changed
+- Updated axios mocks in test files
+
+## [2.8.1] - 2026-02-05
+
+### Changed
+- Updated unassigned issues handling in GitHubService
+
+## [2.8.0] - 2026-02-03
+
+### Added
+- Vitest test suite with 235 tests (88% coverage)
+
 ## [2.7.2] - 2026-02-03
 
 ### Changed
