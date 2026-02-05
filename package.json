@@ -1,6 +1,6 @@
 {
   "name": "support-tracker",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "description": "",
   "type": "module",
   "main": "src/index.js",
