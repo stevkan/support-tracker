@@ -107,8 +107,10 @@ export function AppProvider({ children }) {
     setConfigValidation({ isValid: errors.length === 0, errors, groupedErrors });
   }, []);
 
-  const loadSettings = useCallback(async () => {
-    setIsLoading(true);
+  const loadSettings = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const data = await getSettings();
@@ -149,7 +151,7 @@ export function AppProvider({ children }) {
   }, [loadSettings]);
 
   const refreshSettings = useCallback(() => {
-    return loadSettings();
+    return loadSettings(true);
   }, [loadSettings]);
 
   const setTheme = useCallback((newTheme) => {
