@@ -27,14 +27,20 @@ class GitHubService extends DevOpsService {
     let issues = [];
 
     try {
-      for (const repository of this.repositories) {
-        checkAborted(signal);
-        if (onProgress) {
-          onProgress(repository.repo);
-        }
-        const result = await this.getIssues(repository, { signal });
-        if (result.length > 0) {
-          items.push(...result);
+      const settings = await this.getSettings();
+      if (settings.useTestData) {
+        const testItems = await this.getTestData();
+        items.push(...testItems);
+      } else {
+        for (const repository of this.repositories) {
+          checkAborted(signal);
+          if (onProgress) {
+            onProgress(repository.repo);
+          }
+          const result = await this.getIssues(repository, { signal });
+          if (result.length > 0) {
+            items.push(...result);
+          }
         }
       }
 
@@ -161,11 +167,6 @@ class GitHubService extends DevOpsService {
 
     checkAborted(signal);
 
-    const settings = await this.getSettings();
-    if (settings.useTestData) {
-      return this.getTestData();
-    }
-
     const config = await this.getGitHubConfig();
     if (labels) {
       return this.getIssuesWithLabels(org, repo, labels, ignoreLabels, config, { signal });
@@ -174,20 +175,20 @@ class GitHubService extends DevOpsService {
     }
   }
 
-  getTestData() {
-    return [
-      {
-        node: {
-          createdAt: '2024-08-19T21:43:47Z',
-          labels: { nodes: [{ name: 'bug' }, { name: 'Area: Teams' }] },
-          number: 6842,
-          repository: { name: 'botbuilder-dotnet' },
-          timelineItems: { edges: [] },
-          title: 'TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter',
-          url: 'https://github.com/microsoft/botbuilder-dotnet/issues/6842',
-        },
-      },
-    ];
+  async getTestData() {
+    if (this.jsonStore) {
+      try {
+        this.jsonStore.reloadTestData();
+        const data = await this.jsonStore.testDataDb.read();
+        if (data?.github && Array.isArray(data.github)) {
+          return data.github;
+        }
+        this.logger('Warning: Test data file missing or has invalid "github" array');
+      } catch (err) {
+        this.logger(`Warning: Failed to read test data file: ${err.message}`);
+      }
+    }
+    return [];
   }
 
   async getGitHubConfig() {

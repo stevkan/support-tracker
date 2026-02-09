@@ -6,6 +6,10 @@ const mockSecretsStore = {
   getStackOverflowKey: vi.fn(),
 };
 
+const mockTestDataDb = {
+  read: vi.fn(),
+};
+
 const mockJsonStore = {
   settingsDb: {
     read: vi.fn(),
@@ -13,6 +17,8 @@ const mockJsonStore = {
   issuesDb: {
     update: vi.fn(),
   },
+  testDataDb: mockTestDataDb,
+  reloadTestData: vi.fn(),
 };
 
 vi.mock('../../../../../shared/domain/utils.js', () => ({
@@ -76,17 +82,8 @@ describe('InternalStackOverflowService', () => {
   });
 
   describe('getTestData', () => {
-    it('should return mock internal SO data', () => {
-      service = new InternalStackOverflowService(
-        defaultConfig,
-        defaultLastRun,
-        mockTelemetryClient,
-        { secretsStore: mockSecretsStore, jsonStore: mockJsonStore }
-      );
-
-      const testData = service.getTestData();
-
-      expect(testData).toEqual([
+    it('should return mock internal SO data', async () => {
+      const mockInternalData = [
         {
           tags: ['bot-framework', 'azure-bot-service'],
           owner: { display_name: 'Internal User' },
@@ -95,7 +92,19 @@ describe('InternalStackOverflowService', () => {
           title: 'Azure Bot OAuth Token Not Being Recognized',
           body: '<p>Test internal body</p>',
         },
-      ]);
+      ];
+      mockTestDataDb.read.mockResolvedValue({ internalStackOverflow: mockInternalData });
+
+      service = new InternalStackOverflowService(
+        defaultConfig,
+        defaultLastRun,
+        mockTelemetryClient,
+        { secretsStore: mockSecretsStore, jsonStore: mockJsonStore }
+      );
+
+      const testData = await service.getTestData();
+
+      expect(testData).toEqual(mockInternalData);
     });
   });
 
@@ -124,11 +133,22 @@ describe('InternalStackOverflowService', () => {
     });
 
     it('should return test data when useTestData is true', async () => {
+      const mockInternalData = [
+        {
+          tags: ['bot-framework', 'azure-bot-service'],
+          owner: { display_name: 'Internal User' },
+          is_answered: false,
+          question_id: 419168,
+          title: 'Azure Bot OAuth Token Not Being Recognized',
+          body: '<p>Test internal body</p>',
+        },
+      ];
       mockJsonStore.settingsDb.read.mockResolvedValue({ useTestData: true });
+      mockTestDataDb.read.mockResolvedValue({ internalStackOverflow: mockInternalData });
 
-      const result = await service.getIssues('bot-framework');
+      const result = await service.getTestData();
 
-      expect(result).toEqual(service.getTestData());
+      expect(result).toEqual(mockInternalData);
       expect(axios.get).not.toHaveBeenCalled();
     });
 

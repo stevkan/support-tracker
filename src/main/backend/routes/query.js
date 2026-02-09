@@ -126,19 +126,21 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
     if (enabledServices.internalStackOverflow) servicesToRun.push('internalStackOverflow');
     if (enabledServices.github) servicesToRun.push('github');
 
+    const useTestData = settings.useTestData;
+
     updateJob(jobId, { progress: { current: 0, total: servicesToRun.length, currentService: '' } });
 
     let serviceIndex = 0;
 
     if (enabledServices.stackOverflow && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'Stack Overflow' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'Stack Overflow' },
       });
 
       const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient, deps);
       const soResult = await stackOverflowService.process({
         signal,
-        onProgress: (tag) => {
+        onProgress: useTestData ? undefined : (tag) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Stack Overflow/${tag}` },
           });
@@ -156,7 +158,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     if (enabledServices.internalStackOverflow && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'Internal Stack Overflow' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'Internal Stack Overflow' },
       });
 
       const internalStackOverflowService = new InternalStackOverflowService(
@@ -167,7 +169,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       );
       const isoResult = await internalStackOverflowService.process({
         signal,
-        onProgress: (tag) => {
+        onProgress: useTestData ? undefined : (tag) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Internal Stack Overflow/${tag}` },
           });
@@ -185,13 +187,13 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     if (enabledServices.github && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'GitHub' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'GitHub' },
       });
 
       const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient, deps);
       const ghResult = await gitHubService.process({
         signal,
-        onProgress: (repo) => {
+        onProgress: useTestData ? undefined : (repo) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `GitHub/${repo}` },
           });

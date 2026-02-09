@@ -67,6 +67,13 @@ async function initialize() {
     ipcMain.handle('reload', () => mainWindow?.webContents.reload());
     ipcMain.handle('force-reload', () => mainWindow?.webContents.reloadIgnoringCache());
     ipcMain.handle('toggle-dev-tools', () => mainWindow?.webContents.toggleDevTools());
+    ipcMain.handle('open-test-data', () => {
+      const isPackaged = app.isPackaged;
+      const testDataPath = isPackaged
+        ? path.join(app.getPath('userData'), 'db', 'testData.json')
+        : path.join(process.cwd(), 'src', 'store', 'db', 'testData.json');
+      return shell.openPath(testDataPath);
+    });
 
     await createWindow();
   } catch (error) {

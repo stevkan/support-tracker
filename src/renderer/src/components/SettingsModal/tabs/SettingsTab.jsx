@@ -178,7 +178,7 @@ export default function SettingsTab({ onNavigateTab }) {
         ];
       case 'advanced':
         return [
-          { key: 'useTestData', label: 'Use Test Data', type: 'toggle' },
+          { key: 'useTestData', label: 'Use Test Data', type: 'toggle', hint: 'testdata' },
           { key: 'isVerbose', label: 'Verbose Logging', type: 'toggle', hint: 'devtools' },
         ];
       default:
@@ -398,6 +398,23 @@ export default function SettingsTab({ onNavigateTab }) {
                 style={{ color: 'var(--accent-color, #4ea1d3)', textDecoration: 'underline', cursor: 'pointer' }}
               >Developer Tools</a> to view)</>
             )}
+            {field.hint === 'testdata' && (
+              <> (<a
+                href="#"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const result = await window.electronAPI.openTestData();
+                    if (result) {
+                      setValidationStatus({ status: 'error', message: `Could not open test data file: ${result}` });
+                    }
+                  } catch (err) {
+                    setValidationStatus({ status: 'error', message: 'Failed to open test data file' });
+                  }
+                }}
+                style={{ color: 'var(--accent-color, #4ea1d3)', textDecoration: 'underline', cursor: 'pointer' }}
+              >edit test data</a>)</>
+            )}
           </span>
           <label className={`toggle-switch ${changed ? 'changed' : ''}`}>
             <input
@@ -471,7 +488,7 @@ export default function SettingsTab({ onNavigateTab }) {
       <div className="settings-content">
         <h3 className="settings-group-title">{currentGroup?.label}</h3>
         {currentFields.map(renderField)}
-        {validationStatus.status && (activeGroup === 'azureDevOps' || activeGroup === 'apiKeys') && (
+        {validationStatus.status && (activeGroup === 'azureDevOps' || activeGroup === 'apiKeys' || activeGroup === 'advanced') && (
           <div className={`validation-status validation-${validationStatus.status}`}>
             {validationStatus.status === 'validating' && (
               <span className="validation-spinner"></span>

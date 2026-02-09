@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft-04/schema#",
+  "github": [
+    {
+      "node": {
+        "createdAt": "2024-08-19T21:43:47Z",
+        "labels": { "nodes": [{ "name": "bug" }] },
+        "number": 9998,
+        "repository": { "name": "agents-for-js" },
+        "timelineItems": { "edges": [] },
+        "title": "TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter",
+        "url": "https://github.com/microsoft/agents-for-js/issues/9998"
+      }
+    },
+    {
+      "node": {
+        "createdAt": "2026-02-02T21:43:47Z",
+        "labels": { "nodes": [{ "name": "bug" }] },
+        "number": 9999,
+        "repository": { "name": "agents-for-js" },
+        "timelineItems": { "edges": [] },
+        "title": "Test GitHub Issue",
+        "url": "https://github.com/microsoft/agents-for-js/issues/9999"
+      }
+    }
+  ],
+  "stackOverflow": [
+    {
+      "tags": ["azure", "botframework", "azure-bot-service"],
+      "owner": { "display_name": "Test User" },
+      "is_answered": false,
+      "question_id": 99999998,
+      "title": "Test Stack Overflow Question",
+      "body": "<p>Test body</p>"
+    }
+  ],
+  "internalStackOverflow": [
+    {
+      "tags": ["bot-framework", "azure-bot-service"],
+      "owner": { "display_name": "Internal User" },
+      "is_answered": false,
+      "question_id": 999998,
+      "title": "Azure Bot OAuth Token Not Being Recognized",
+      "body": "<p>Test internal body</p>"
+    }
+  ]
+}

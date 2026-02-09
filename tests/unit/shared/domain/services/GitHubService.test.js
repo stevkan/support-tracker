@@ -25,6 +25,10 @@ const mockCredentialService = {
   getAzureDevOpsPat: vi.fn(),
 };
 
+const mockTestDataDb = {
+  read: vi.fn(),
+};
+
 const mockJsonStore = {
   settingsDb: {
     read: vi.fn(),
@@ -32,6 +36,8 @@ const mockJsonStore = {
   issuesDb: {
     update: vi.fn(),
   },
+  testDataDb: mockTestDataDb,
+  reloadTestData: vi.fn(),
 };
 
 const createMockGitHubIssue = (number, title = `Issue ${number}`, repoName = 'botbuilder-js', labels = []) => ({
@@ -117,8 +123,23 @@ describe('GitHubService', () => {
   });
 
   describe('getTestData', () => {
-    it('returns mock issue data', () => {
-      const testData = service.getTestData();
+    it('returns mock issue data', async () => {
+      const mockGithubData = [
+        {
+          node: {
+            createdAt: '2024-08-19T21:43:47Z',
+            labels: { nodes: [{ name: 'bug' }, { name: 'Area: Teams' }] },
+            number: 6842,
+            repository: { name: 'botbuilder-dotnet' },
+            timelineItems: { edges: [] },
+            title: 'TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter',
+            url: 'https://github.com/microsoft/botbuilder-dotnet/issues/6842',
+          },
+        },
+      ];
+      mockTestDataDb.read.mockResolvedValue({ github: mockGithubData });
+
+      const testData = await service.getTestData();
 
       expect(testData).toHaveLength(1);
       expect(testData[0].node).toBeDefined();
@@ -128,8 +149,23 @@ describe('GitHubService', () => {
       expect(testData[0].node.url).toBe('https://github.com/microsoft/botbuilder-dotnet/issues/6842');
     });
 
-    it('includes labels in test data', () => {
-      const testData = service.getTestData();
+    it('includes labels in test data', async () => {
+      const mockGithubData = [
+        {
+          node: {
+            createdAt: '2024-08-19T21:43:47Z',
+            labels: { nodes: [{ name: 'bug' }, { name: 'Area: Teams' }] },
+            number: 6842,
+            repository: { name: 'botbuilder-dotnet' },
+            timelineItems: { edges: [] },
+            title: 'TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter',
+            url: 'https://github.com/microsoft/botbuilder-dotnet/issues/6842',
+          },
+        },
+      ];
+      mockTestDataDb.read.mockResolvedValue({ github: mockGithubData });
+
+      const testData = await service.getTestData();
       const labels = testData[0].node.labels.nodes;
 
       expect(labels).toHaveLength(2);
@@ -368,9 +404,23 @@ describe('GitHubService', () => {
 
   describe('getIssues with test data mode', () => {
     it('returns test data when useTestData is true', async () => {
+      const mockGithubData = [
+        {
+          node: {
+            createdAt: '2024-08-19T21:43:47Z',
+            labels: { nodes: [{ name: 'bug' }, { name: 'Area: Teams' }] },
+            number: 6842,
+            repository: { name: 'botbuilder-dotnet' },
+            timelineItems: { edges: [] },
+            title: 'TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter',
+            url: 'https://github.com/microsoft/botbuilder-dotnet/issues/6842',
+          },
+        },
+      ];
       mockJsonStore.settingsDb.read.mockResolvedValue({ useTestData: true });
+      mockTestDataDb.read.mockResolvedValue({ github: mockGithubData });
 
-      const result = await service.getIssues({ org: 'microsoft', repo: 'test' });
+      const result = await service.getTestData();
 
       expect(result).toHaveLength(1);
       expect(result[0].node.number).toBe(6842);

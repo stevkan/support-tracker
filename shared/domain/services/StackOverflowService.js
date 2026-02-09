@@ -26,14 +26,20 @@ class StackOverflowService extends DevOpsService {
     let issues = [];
 
     try {
-      for (const tag of this.tags) {
-        checkAborted(signal);
-        if (onProgress) {
-          onProgress(tag);
-        }
-        const result = await this.getIssues(tag, { signal });
-        if (result.length > 0) {
-          items.push(...result);
+      const settings = await this.getSettings();
+      if (settings.useTestData) {
+        const testItems = await this.getTestData();
+        items.push(...testItems);
+      } else {
+        for (const tag of this.tags) {
+          checkAborted(signal);
+          if (onProgress) {
+            onProgress(tag);
+          }
+          const result = await this.getIssues(tag, { signal });
+          if (result.length > 0) {
+            items.push(...result);
+          }
         }
       }
 
@@ -208,11 +214,6 @@ class StackOverflowService extends DevOpsService {
 
     checkAborted(signal);
 
-    const settings = await this.getSettings();
-    if (settings.useTestData) {
-      return this.getTestData();
-    }
-
     const params = this.buildRequestParams(tagged, this.lastRun);
     const response = await this.handleServiceResponse(
       await this.fetchStackOverflowIssues(params, {}, { signal }),
@@ -225,17 +226,20 @@ class StackOverflowService extends DevOpsService {
     return response.data?.items || [];
   }
 
-  getTestData() {
-    return [
-      {
-        tags: ['azure', 'botframework', 'azure-bot-service'],
-        owner: { display_name: 'Test User' },
-        is_answered: false,
-        question_id: 78853530,
-        title: 'Test Stack Overflow Question',
-        body: '<p>Test body</p>',
-      },
-    ];
+  async getTestData() {
+    if (this.jsonStore) {
+      try {
+        this.jsonStore.reloadTestData();
+        const data = await this.jsonStore.testDataDb.read();
+        if (data?.stackOverflow && Array.isArray(data.stackOverflow)) {
+          return data.stackOverflow;
+        }
+        this.logger('Warning: Test data file missing or has invalid "stackOverflow" array');
+      } catch (err) {
+        this.logger(`Warning: Failed to read test data file: ${err.message}`);
+      }
+    }
+    return [];
   }
 
   getUrl(number) {
