@@ -118,6 +118,8 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       services: {},
     };
 
+    const serviceErrors = [];
+
     const servicesToRun = [];
     if (enabledServices.stackOverflow) servicesToRun.push('stackOverflow');
     if (enabledServices.internalStackOverflow) servicesToRun.push('internalStackOverflow');
@@ -144,6 +146,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       if (soResult instanceof Error) {
         console.error('Stack Overflow service error:', soResult.message);
         results.services.stackOverflow = { status: 'error', message: soResult.message };
+        serviceErrors.push({ service: 'Stack Overflow', message: soResult.message });
       } else {
         results.services.stackOverflow = soResult;
       }
@@ -172,6 +175,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       if (isoResult instanceof Error) {
         console.error('Internal Stack Overflow service error:', isoResult.message);
         results.services.internalStackOverflow = { status: 'error', message: isoResult.message };
+        serviceErrors.push({ service: 'Internal Stack Overflow', message: isoResult.message });
       } else {
         results.services.internalStackOverflow = isoResult;
       }
@@ -195,6 +199,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       if (ghResult instanceof Error) {
         console.error('GitHub service error:', ghResult.message);
         results.services.github = { status: 'error', message: ghResult.message };
+        serviceErrors.push({ service: 'GitHub', message: ghResult.message });
       } else {
         results.services.github = ghResult;
       }
@@ -207,6 +212,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     const issues = await jsonStore.issuesDb.read();
     results.issues = issues;
+    results.serviceErrors = serviceErrors;
 
     updateJob(jobId, {
       status: 'completed',

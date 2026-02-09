@@ -168,3 +168,15 @@
   }
 }
 
+.service-error {
+  padding: 10px 14px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #ef4444;
+}
+
+.service-error p {
+  margin: 0;
+}
+

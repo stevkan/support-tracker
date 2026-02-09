@@ -105,11 +105,31 @@ export function Landing() {
 
       if (status.status === 'completed') {
         setIsRunning(false);
-        setResults(status.result?.issues || null);
+
+        let issueResults = status.result?.issues || null;
+        const services = status.result?.services || {};
+
+        if (issueResults?.index) {
+          for (const [key, value] of Object.entries(services)) {
+            if (value?.status === 'error') {
+              issueResults.index[key] = value;
+            }
+          }
+        }
+
+        setResults(issueResults);
         setCurrentJobId(null);
         clearInterval(pollingRef.current);
         pollingRef.current = null;
         refreshSettings();
+
+        const serviceErrors = status.result?.serviceErrors;
+        if (serviceErrors && serviceErrors.length > 0) {
+          const errorMessages = serviceErrors
+            .map(e => `${e.service}: ${e.message}`)
+            .join('\n');
+          setError(errorMessages);
+        }
       } else if (status.status === 'error') {
         setIsRunning(false);
         setError(status.error || 'An error occurred');
