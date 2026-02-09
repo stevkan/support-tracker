@@ -18,7 +18,7 @@ class InternalStackOverflowService extends StackOverflowService {
 
   async getIssues(tagged, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${tagged} tagged posts...`);
+    this.logger(`Fetching ${tagged} tagged posts...`);
     await sleep(1500);
 
     checkAborted(signal);

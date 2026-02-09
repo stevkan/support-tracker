@@ -9,6 +9,7 @@ import {
   InternalStackOverflowService,
   DevOpsService,
 } from '../../../../shared/domain/services/index.js';
+import { verboseLog } from '../../verboseLogger.js';
 
 /**
  * Build service configurations from stored settings.
@@ -86,7 +87,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
   if (!job) return;
 
   const { signal } = job.abortController;
-  const deps = { jsonStore, secretsStore, credentialService };
+  const deps = { jsonStore, secretsStore, credentialService, logger: (...args) => verboseLog('Query', ...args) };
 
   const telemetryClient = {
     trackEvent: () => {},
@@ -144,7 +145,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         },
       });
       if (soResult instanceof Error) {
-        console.error('Stack Overflow service error:', soResult.message);
+        verboseLog('Query', 'Stack Overflow service error:', soResult.message);
         results.services.stackOverflow = { status: 'error', message: soResult.message };
         serviceErrors.push({ service: 'Stack Overflow', message: soResult.message });
       } else {
@@ -173,7 +174,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         },
       });
       if (isoResult instanceof Error) {
-        console.error('Internal Stack Overflow service error:', isoResult.message);
+        verboseLog('Query', 'Internal Stack Overflow service error:', isoResult.message);
         results.services.internalStackOverflow = { status: 'error', message: isoResult.message };
         serviceErrors.push({ service: 'Internal Stack Overflow', message: isoResult.message });
       } else {
@@ -197,7 +198,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         },
       });
       if (ghResult instanceof Error) {
-        console.error('GitHub service error:', ghResult.message);
+        verboseLog('Query', 'GitHub service error:', ghResult.message);
         results.services.github = { status: 'error', message: ghResult.message };
         serviceErrors.push({ service: 'GitHub', message: ghResult.message });
       } else {

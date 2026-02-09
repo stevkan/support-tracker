@@ -14,6 +14,7 @@ class StackOverflowService extends DevOpsService {
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
     this.issuesDb = deps.jsonStore?.issuesDb;
+    this.logger = deps.logger || console.log;
   }
 
   async process(options = {}) {
@@ -54,7 +55,7 @@ class StackOverflowService extends DevOpsService {
         'Custom.IssueURL': `<a href="${this.getUrl(question_id)}">${this.getUrl(question_id)}</a>`,
       }));
 
-      console.log('Posts Found:', issues.length);
+      this.logger('Posts Found:', issues.length);
 
       if (this.issuesDb) {
         const isInternal = this.tags.includes('bot-framework');
@@ -103,7 +104,7 @@ class StackOverflowService extends DevOpsService {
         }
       }
 
-      console.log('Possible Matching Issues:', existingIssuesCount);
+      this.logger('Possible Matching Issues:', existingIssuesCount);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       return await this.errorHandler(error, 'StackOverflowService');
@@ -111,7 +112,7 @@ class StackOverflowService extends DevOpsService {
 
     try {
       if (possibleDevOpsMatches.length === 0) {
-        console.log('No Matching Issues Exist');
+        this.logger('No Matching Issues Exist');
       } else {
         if (this.issuesDb) {
           const isInternal = this.tags.includes('bot-framework');
@@ -142,7 +143,7 @@ class StackOverflowService extends DevOpsService {
         return { status: 204, message: 'No new posts to add' };
       }
 
-      console.log('Posts New to DevOps:', unassignedIssues.length);
+      this.logger('Posts New to DevOps:', unassignedIssues.length);
 
       if (this.issuesDb) {
         const isInternal = this.tags.includes('bot-framework');
@@ -202,7 +203,7 @@ class StackOverflowService extends DevOpsService {
 
   async getIssues(tagged, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${tagged} tagged posts...`);
+    this.logger(`Fetching ${tagged} tagged posts...`);
     await sleep(1500);
 
     checkAborted(signal);

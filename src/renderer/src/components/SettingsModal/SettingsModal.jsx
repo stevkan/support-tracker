@@ -54,7 +54,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           ))}
         </div>
         <div className="settings-tab-content">
-          {activeTab === 'settings' && <SettingsTab />}
+          {activeTab === 'settings' && <SettingsTab onNavigateTab={setActiveTab} />}
           {activeTab === 'repositories' && <RepositoriesTab />}
           {activeTab === 'appearance' && <AppearanceTab />}
           {activeTab === 'devtools' && <DeveloperToolsTab />}

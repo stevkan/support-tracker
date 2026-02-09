@@ -15,6 +15,7 @@ class GitHubService extends DevOpsService {
     this.telemetryClient = telemetryClient;
     this.secretsStore = deps.secretsStore;
     this.issuesDb = deps.jsonStore?.issuesDb;
+    this.logger = deps.logger || console.log;
   }
 
   async process(options = {}) {
@@ -59,7 +60,7 @@ class GitHubService extends DevOpsService {
         'Custom.IssueURL': `<a href="${url}">${url}</a>`,
       }));
 
-      console.log('Issues Found:', issues.length);
+      this.logger('Issues Found:', issues.length);
 
       if (this.issuesDb) {
         await this.issuesDb.update('index.github.found.issues', issues);
@@ -109,7 +110,7 @@ class GitHubService extends DevOpsService {
         }
       }
 
-      console.log('Possible Matching Issues:', existingIssuesCount);
+      this.logger('Possible Matching Issues:', existingIssuesCount);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       return await this.errorHandler(error, 'GitHubService');
@@ -117,7 +118,7 @@ class GitHubService extends DevOpsService {
 
     try {
       if (existingIssuesDetails.length === 0) {
-        console.log('No Matching Issues Exist');
+        this.logger('No Matching Issues Exist');
       } else {
         if (this.issuesDb) {
           await this.issuesDb.update('index.github.devOps', existingIssuesDetails);
@@ -139,7 +140,7 @@ class GitHubService extends DevOpsService {
         return { status: 204, message: 'No new issues to add' };
       }
 
-      console.log('New Issues to Add:', unassignedIssues.length);
+      this.logger('New Issues to Add:', unassignedIssues.length);
 
       if (this.issuesDb) {
         await this.issuesDb.update('index.github.newIssues.issues', unassignedIssues);
@@ -155,7 +156,7 @@ class GitHubService extends DevOpsService {
 
   async getIssues({ org, repo, labels, ignoreLabels = [] }, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${repo} issues...`);
+    this.logger(`Fetching ${repo} issues...`);
     await sleep(300);
 
     checkAborted(signal);

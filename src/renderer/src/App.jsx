@@ -21,6 +21,15 @@ function AppContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  useEffect(() => {
+    if (window.electronAPI?.onVerboseLog) {
+      const cleanup = window.electronAPI.onVerboseLog((data) => {
+        console.log(`[Verbose:${data.source}]`, data.message);
+      });
+      return cleanup;
+    }
+  }, []);
+
   return (
     <div className="app">
       <PatAlertBanner onSettingsClick={() => setSettingsOpen(true)} />

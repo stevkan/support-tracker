@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startServer } from './backend/server.js';
+import { setWindow } from './verboseLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,8 @@ async function createWindow() {
     },
     show: false,
   });
+
+  setWindow(mainWindow);
 
   mainWindow.setMenuBarVisibility(false);
 

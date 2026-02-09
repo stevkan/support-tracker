@@ -16,7 +16,7 @@ const SECRET_KEY_MAP = {
   appInsightsKey: 'appinsights-key',
 };
 
-export default function SettingsTab() {
+export default function SettingsTab({ onNavigateTab }) {
   const { settings: appSettings, refreshSettings, setHasUnsavedChanges, recheckPatStatus } = useApp();
 
   const [activeGroup, setActiveGroup] = useState('azureDevOps');
@@ -75,29 +75,24 @@ export default function SettingsTab() {
   }
 
   function handleChange(key, value) {
-    setFormData((prev) => {
-      const newFormData = { ...prev, [key]: value };
-      
-      // Compute if there are actual changes from stored values
-      const fields = getFieldsForGroup(activeGroup);
-      const hasChanges = fields.some((f) => {
-        const fieldKey = f.key;
-        const currentValue = newFormData[fieldKey] || '';
-        
-        if (SECRET_KEY_MAP[fieldKey]) {
-          // For secrets: compare against loaded secret if revealed, otherwise only changed if non-empty
-          if (fieldKey in loadedSecrets) {
-            return currentValue !== loadedSecrets[fieldKey];
-          }
-          return currentValue !== '';
+    const newFormData = { ...formData, [key]: value };
+    setFormData(newFormData);
+
+    const fields = getFieldsForGroup(activeGroup);
+    const hasChanges = fields.some((f) => {
+      const fieldKey = f.key;
+      const currentValue = newFormData[fieldKey] || '';
+
+      if (SECRET_KEY_MAP[fieldKey]) {
+        if (fieldKey in loadedSecrets) {
+          return currentValue !== loadedSecrets[fieldKey];
         }
-        // For regular fields: compare against original data
-        return newFormData[fieldKey] !== originalData[fieldKey];
-      });
-      
-      setHasUnsavedChanges(hasChanges);
-      return newFormData;
+        return currentValue !== '';
+      }
+      return newFormData[fieldKey] !== originalData[fieldKey];
     });
+
+    setHasUnsavedChanges(hasChanges);
   }
 
   async function toggleVisibility(key) {
@@ -184,7 +179,7 @@ export default function SettingsTab() {
       case 'advanced':
         return [
           { key: 'useTestData', label: 'Use Test Data', type: 'toggle' },
-          { key: 'isVerbose', label: 'Verbose Logging', type: 'toggle' },
+          { key: 'isVerbose', label: 'Verbose Logging', type: 'toggle', hint: 'devtools' },
         ];
       default:
         return [];
@@ -394,7 +389,16 @@ export default function SettingsTab() {
     if (field.type === 'toggle') {
       return (
         <div key={field.key} className="toggle-group">
-          <span className="toggle-label">{field.label}</span>
+          <span className="toggle-label">
+            {field.label}
+            {field.hint === 'devtools' && (
+              <> (enable <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigateTab?.('devtools'); }}
+                style={{ color: 'var(--accent-color, #4ea1d3)', textDecoration: 'underline', cursor: 'pointer' }}
+              >Developer Tools</a> to view)</>
+            )}
+          </span>
           <label className={`toggle-switch ${changed ? 'changed' : ''}`}>
             <input
               type="checkbox"

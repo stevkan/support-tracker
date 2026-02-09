@@ -11,4 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reload: () => ipcRenderer.invoke('reload'),
   forceReload: () => ipcRenderer.invoke('force-reload'),
   toggleDevTools: () => ipcRenderer.invoke('toggle-dev-tools'),
+
+  onVerboseLog: (callback) => {
+    ipcRenderer.on('verbose-log', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('verbose-log');
+  },
 });
