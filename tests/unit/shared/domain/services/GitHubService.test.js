@@ -160,7 +160,7 @@ describe('GitHubService', () => {
       expect(config.url).toBe('https://api.github.com/graphql');
     });
 
-    it('handles null token when secretsStore is missing', async () => {
+    it('throws when secretsStore is missing (no token)', async () => {
       const serviceWithoutSecrets = new GitHubService(
         { repositories, source: 'GitHub' },
         lastRun,
@@ -168,9 +168,9 @@ describe('GitHubService', () => {
         { jsonStore: mockJsonStore }
       );
 
-      const config = await serviceWithoutSecrets.getGitHubConfig();
-
-      expect(config.headers.Authorization).toBe('Bearer null');
+      await expect(serviceWithoutSecrets.getGitHubConfig()).rejects.toThrow(
+        'GitHub token is not configured'
+      );
     });
   });
 

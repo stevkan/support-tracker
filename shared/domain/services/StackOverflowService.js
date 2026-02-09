@@ -213,7 +213,7 @@ class StackOverflowService extends DevOpsService {
     }
 
     const params = this.buildRequestParams(tagged, this.lastRun);
-    const response = this.handleServiceResponse(
+    const response = await this.handleServiceResponse(
       await this.fetchStackOverflowIssues(params, {}, { signal }),
       'StackOverflowService'
     );

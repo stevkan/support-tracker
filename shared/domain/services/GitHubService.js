@@ -42,6 +42,7 @@ class GitHubService extends DevOpsService {
       }
     } catch (error) {
       if (error.name === 'AbortError') throw error;
+      console.error(`GitHubService error: ${error.message}`);
       return await this.errorHandler(error, 'GitHubService');
     }
 
@@ -191,6 +192,9 @@ class GitHubService extends DevOpsService {
   async getGitHubConfig() {
     const settings = await this.getSettings();
     const token = this.secretsStore ? await this.secretsStore.getGitHubToken() : null;
+    if (!token) {
+      throw new Error('GitHub token is not configured. Set it in Options → Settings → Credentials.');
+    }
     return {
       method: 'POST',
       url: settings.github?.apiUrl || 'https://api.github.com/graphql',
@@ -204,9 +208,13 @@ class GitHubService extends DevOpsService {
     for (const label of labels) {
       checkAborted(signal);
       const query = this.buildQuery(org, repo, label, ignoreLabels);
-      const response = this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
+      const response = await this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
 
       if (response instanceof Error) throw response;
+
+      if (response.data?.errors?.length) {
+        throw new Error(`GitHub GraphQL error: ${response.data.errors.map(e => e.message).join('; ')}`);
+      }
 
       const issues = response.data?.data?.search?.edges || [];
       this.logAndTrackResponse(issues, 'getIssuesWithLabels');
@@ -218,9 +226,13 @@ class GitHubService extends DevOpsService {
   async getIssuesWithoutLabels(org, repo, ignoreLabels, config, options = {}) {
     const { signal } = options;
     const query = this.buildQuery(org, repo, null, ignoreLabels);
-    const response = this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
+    const response = await this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
 
     if (response instanceof Error) throw response;
+
+    if (response.data?.errors?.length) {
+      throw new Error(`GitHub GraphQL error: ${response.data.errors.map(e => e.message).join('; ')}`);
+    }
 
     const issues = response.data?.data?.search?.edges || [];
     this.logAndTrackResponse(issues, 'getIssuesWithoutLabels');

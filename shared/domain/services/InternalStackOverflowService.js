@@ -39,7 +39,7 @@ class InternalStackOverflowService extends StackOverflowService {
       },
     };
 
-    const response = this.handleServiceResponse(
+    const response = await this.handleServiceResponse(
       await this.fetchStackOverflowIssues(params, config, { signal }),
       'InternalStackOverflowService'
     );
