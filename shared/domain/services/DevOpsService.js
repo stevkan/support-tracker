@@ -79,7 +79,7 @@ class DevOpsService extends ErrorHandler {
       };
 
       response = await axios.request(config);
-      response = this.handleServiceResponse(response, 'DevOpsService');
+      response = await this.handleServiceResponse(response, 'DevOpsService');
       if (response instanceof Error) {
         throw response;
       }

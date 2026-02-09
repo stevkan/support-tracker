@@ -4,7 +4,7 @@ import { app } from 'electron';
 import { Low } from 'lowdb';
 import { JSONFile, JSONFilePreset } from 'lowdb/node';
 import { Store } from 'storaje-db';
-import { issuesModel, loggingModel, settingsModel } from './models/models.js';
+import { issuesModel, loggingModel, settingsModel, testDataModel } from './models/models.js';
 
 const isPackaged = app.isPackaged;
 const dataDir = isPackaged
@@ -21,12 +21,19 @@ class JsonStore {
     this.issuesDb = new Store(dbPath, 'issues.json', issuesModel);
     this.loggingDb = new Store(dbPath, 'logging.json', loggingModel);
     this.settingsDb = new Store(dbPath, 'settings.json', settingsModel);
+    this.testDataDb = new Store(dbPath, 'testData.json', testDataModel);
+  }
+
+  reloadTestData() {
+    const dbPath = dataDir + path.sep;
+    this.testDataDb = new Store(dbPath, 'testData.json', testDataModel);
   }
 
   async initializeDbs() {
     const settings = await this.settingsDb.read();
     await this.issuesDb.read();
     await this.loggingDb.read();
+    await this.testDataDb.read();
 
     if (settings.isVerbose) {
       console.log('Settings store initialized');

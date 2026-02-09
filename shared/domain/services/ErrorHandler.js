@@ -52,33 +52,33 @@ class ErrorHandler {
     return error;
   }
 
-  handleServiceResponse(res, serviceName) {
+  async handleServiceResponse(res, serviceName) {
     switch (res.status) {
       case 200:
       case 204:
         break;
       case 400:
         console.error(`Bad request in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       case 401:
         console.error(`Unauthorized in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       case 403:
         console.error(`Forbidden in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       case 404:
         console.error(`Not found in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       case 429:
         console.error(`Too many requests in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       case 500:
         console.error(`Internal server error in ${serviceName}: Received ${res.status}`);
-        return this.errorHandler(res, serviceName);
+        return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
       default:
         if (res.status >= 400) {
           console.error(`Unexpected error in ${serviceName}: ${res.status}`);
-          return this.errorHandler(res, serviceName);
+          return await this.errorHandler(new Error(`${serviceName} HTTP ${res.status}`), serviceName);
         }
         break;
     }

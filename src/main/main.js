@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startServer } from './backend/server.js';
+import { setWindow } from './verboseLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,8 @@ async function createWindow() {
     },
     show: false,
   });
+
+  setWindow(mainWindow);
 
   mainWindow.setMenuBarVisibility(false);
 
@@ -64,6 +67,13 @@ async function initialize() {
     ipcMain.handle('reload', () => mainWindow?.webContents.reload());
     ipcMain.handle('force-reload', () => mainWindow?.webContents.reloadIgnoringCache());
     ipcMain.handle('toggle-dev-tools', () => mainWindow?.webContents.toggleDevTools());
+    ipcMain.handle('open-test-data', () => {
+      const isPackaged = app.isPackaged;
+      const testDataPath = isPackaged
+        ? path.join(app.getPath('userData'), 'db', 'testData.json')
+        : path.join(process.cwd(), 'src', 'store', 'db', 'testData.json');
+      return shell.openPath(testDataPath);
+    });
 
     await createWindow();
   } catch (error) {

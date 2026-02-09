@@ -18,15 +18,10 @@ class InternalStackOverflowService extends StackOverflowService {
 
   async getIssues(tagged, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${tagged} tagged posts...`);
+    this.logger(`Fetching ${tagged} tagged posts...`);
     await sleep(1500);
 
     checkAborted(signal);
-
-    const settings = await this.getSettings();
-    if (settings.useTestData) {
-      return this.getTestData();
-    }
 
     const params = this.buildRequestParams(tagged, this.lastRun);
     const apiKey = this.secretsStore ? await this.secretsStore.getStackOverflowKey() : null;
@@ -39,7 +34,7 @@ class InternalStackOverflowService extends StackOverflowService {
       },
     };
 
-    const response = this.handleServiceResponse(
+    const response = await this.handleServiceResponse(
       await this.fetchStackOverflowIssues(params, config, { signal }),
       'InternalStackOverflowService'
     );
@@ -50,17 +45,20 @@ class InternalStackOverflowService extends StackOverflowService {
     return response.data?.items || [];
   }
 
-  getTestData() {
-    return [
-      {
-        tags: ['bot-framework', 'azure-bot-service'],
-        owner: { display_name: 'Internal User' },
-        is_answered: false,
-        question_id: 419168,
-        title: 'Azure Bot OAuth Token Not Being Recognized',
-        body: '<p>Test internal body</p>',
-      },
-    ];
+  async getTestData() {
+    if (this.jsonStore) {
+      try {
+        this.jsonStore.reloadTestData();
+        const data = await this.jsonStore.testDataDb.read();
+        if (data?.internalStackOverflow && Array.isArray(data.internalStackOverflow)) {
+          return data.internalStackOverflow;
+        }
+        this.logger('Warning: Test data file missing or has invalid "internalStackOverflow" array');
+      } catch (err) {
+        this.logger(`Warning: Failed to read test data file: ${err.message}`);
+      }
+    }
+    return [];
   }
 
   getUrl(number) {

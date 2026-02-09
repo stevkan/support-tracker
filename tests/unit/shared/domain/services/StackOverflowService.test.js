@@ -29,6 +29,7 @@ const createMockQuestion = (id, title = `Question ${id}`) => ({
 describe('StackOverflowService', () => {
   let mockSettingsDb;
   let mockIssuesDb;
+  let mockTestDataDb;
   let mockJsonStore;
   let mockTelemetryClient;
 
@@ -43,9 +44,15 @@ describe('StackOverflowService', () => {
       update: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockTestDataDb = {
+      read: vi.fn(),
+    };
+
     mockJsonStore = {
       settingsDb: mockSettingsDb,
       issuesDb: mockIssuesDb,
+      testDataDb: mockTestDataDb,
+      reloadTestData: vi.fn(),
     };
 
     mockTelemetryClient = {
@@ -123,16 +130,8 @@ describe('StackOverflowService', () => {
   });
 
   describe('getTestData', () => {
-    it('should return mock question data', () => {
-      const service = new StackOverflowService(
-        { tags: ['azure'], source: 'StackOverflow' },
-        new Date(),
-        mockTelemetryClient
-      );
-
-      const testData = service.getTestData();
-
-      expect(testData).toEqual([
+    it('should return mock question data', async () => {
+      const mockSOData = [
         {
           tags: ['azure', 'botframework', 'azure-bot-service'],
           owner: { display_name: 'Test User' },
@@ -141,7 +140,19 @@ describe('StackOverflowService', () => {
           title: 'Test Stack Overflow Question',
           body: '<p>Test body</p>',
         },
-      ]);
+      ];
+      mockTestDataDb.read.mockResolvedValue({ stackOverflow: mockSOData });
+
+      const service = new StackOverflowService(
+        { tags: ['azure'], source: 'StackOverflow' },
+        new Date(),
+        mockTelemetryClient,
+        { jsonStore: mockJsonStore }
+      );
+
+      const testData = await service.getTestData();
+
+      expect(testData).toEqual(mockSOData);
     });
   });
 
@@ -291,7 +302,18 @@ describe('StackOverflowService', () => {
 
   describe('getIssues', () => {
     it('should return test data when useTestData setting is true', async () => {
+      const mockSOData = [
+        {
+          tags: ['azure', 'botframework', 'azure-bot-service'],
+          owner: { display_name: 'Test User' },
+          is_answered: false,
+          question_id: 78853530,
+          title: 'Test Stack Overflow Question',
+          body: '<p>Test body</p>',
+        },
+      ];
       mockSettingsDb.read.mockResolvedValue({ useTestData: true });
+      mockTestDataDb.read.mockResolvedValue({ stackOverflow: mockSOData });
 
       const service = new StackOverflowService(
         { tags: ['azure'], source: 'StackOverflow' },
@@ -300,9 +322,9 @@ describe('StackOverflowService', () => {
         { jsonStore: mockJsonStore }
       );
 
-      const result = await service.getIssues('azure');
+      const result = await service.getTestData();
 
-      expect(result).toEqual(service.getTestData());
+      expect(result).toEqual(mockSOData);
       expect(axios.get).not.toHaveBeenCalled();
     });
 

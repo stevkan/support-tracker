@@ -9,6 +9,7 @@ import {
   InternalStackOverflowService,
   DevOpsService,
 } from '../../../../shared/domain/services/index.js';
+import { verboseLog } from '../../verboseLogger.js';
 
 /**
  * Build service configurations from stored settings.
@@ -86,7 +87,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
   if (!job) return;
 
   const { signal } = job.abortController;
-  const deps = { jsonStore, secretsStore, credentialService };
+  const deps = { jsonStore, secretsStore, credentialService, logger: (...args) => verboseLog('Query', ...args) };
 
   const telemetryClient = {
     trackEvent: () => {},
@@ -118,10 +119,14 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       services: {},
     };
 
+    const serviceErrors = [];
+
     const servicesToRun = [];
     if (enabledServices.stackOverflow) servicesToRun.push('stackOverflow');
     if (enabledServices.internalStackOverflow) servicesToRun.push('internalStackOverflow');
     if (enabledServices.github) servicesToRun.push('github');
+
+    const useTestData = settings.useTestData;
 
     updateJob(jobId, { progress: { current: 0, total: servicesToRun.length, currentService: '' } });
 
@@ -129,25 +134,31 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     if (enabledServices.stackOverflow && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'Stack Overflow' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'Stack Overflow' },
       });
 
       const stackOverflowService = new StackOverflowService(StackOverflow, queryDate, telemetryClient, deps);
       const soResult = await stackOverflowService.process({
         signal,
-        onProgress: (tag) => {
+        onProgress: useTestData ? undefined : (tag) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Stack Overflow/${tag}` },
           });
         },
       });
-      results.services.stackOverflow = soResult;
+      if (soResult instanceof Error) {
+        verboseLog('Query', 'Stack Overflow service error:', soResult.message);
+        results.services.stackOverflow = { status: 'error', message: soResult.message };
+        serviceErrors.push({ service: 'Stack Overflow', message: soResult.message });
+      } else {
+        results.services.stackOverflow = soResult;
+      }
       serviceIndex++;
     }
 
     if (enabledServices.internalStackOverflow && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'Internal Stack Overflow' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'Internal Stack Overflow' },
       });
 
       const internalStackOverflowService = new InternalStackOverflowService(
@@ -158,31 +169,43 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
       );
       const isoResult = await internalStackOverflowService.process({
         signal,
-        onProgress: (tag) => {
+        onProgress: useTestData ? undefined : (tag) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Internal Stack Overflow/${tag}` },
           });
         },
       });
-      results.services.internalStackOverflow = isoResult;
+      if (isoResult instanceof Error) {
+        verboseLog('Query', 'Internal Stack Overflow service error:', isoResult.message);
+        results.services.internalStackOverflow = { status: 'error', message: isoResult.message };
+        serviceErrors.push({ service: 'Internal Stack Overflow', message: isoResult.message });
+      } else {
+        results.services.internalStackOverflow = isoResult;
+      }
       serviceIndex++;
     }
 
     if (enabledServices.github && job.status === 'running') {
       updateJob(jobId, {
-        progress: { current: serviceIndex, total: servicesToRun.length, currentService: 'GitHub' },
+        progress: { current: serviceIndex, total: servicesToRun.length, currentService: useTestData ? 'Test Data' : 'GitHub' },
       });
 
       const gitHubService = new GitHubService(GitHub, queryDate, telemetryClient, deps);
       const ghResult = await gitHubService.process({
         signal,
-        onProgress: (repo) => {
+        onProgress: useTestData ? undefined : (repo) => {
           updateJob(jobId, {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `GitHub/${repo}` },
           });
         },
       });
-      results.services.github = ghResult;
+      if (ghResult instanceof Error) {
+        verboseLog('Query', 'GitHub service error:', ghResult.message);
+        results.services.github = { status: 'error', message: ghResult.message };
+        serviceErrors.push({ service: 'GitHub', message: ghResult.message });
+      } else {
+        results.services.github = ghResult;
+      }
       serviceIndex++;
     }
 
@@ -192,6 +215,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     const issues = await jsonStore.issuesDb.read();
     results.issues = issues;
+    results.serviceErrors = serviceErrors;
 
     updateJob(jobId, {
       status: 'completed',

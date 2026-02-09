@@ -15,6 +15,7 @@ class GitHubService extends DevOpsService {
     this.telemetryClient = telemetryClient;
     this.secretsStore = deps.secretsStore;
     this.issuesDb = deps.jsonStore?.issuesDb;
+    this.logger = deps.logger || console.log;
   }
 
   async process(options = {}) {
@@ -26,14 +27,20 @@ class GitHubService extends DevOpsService {
     let issues = [];
 
     try {
-      for (const repository of this.repositories) {
-        checkAborted(signal);
-        if (onProgress) {
-          onProgress(repository.repo);
-        }
-        const result = await this.getIssues(repository, { signal });
-        if (result.length > 0) {
-          items.push(...result);
+      const settings = await this.getSettings();
+      if (settings.useTestData) {
+        const testItems = await this.getTestData();
+        items.push(...testItems);
+      } else {
+        for (const repository of this.repositories) {
+          checkAborted(signal);
+          if (onProgress) {
+            onProgress(repository.repo);
+          }
+          const result = await this.getIssues(repository, { signal });
+          if (result.length > 0) {
+            items.push(...result);
+          }
         }
       }
 
@@ -42,6 +49,7 @@ class GitHubService extends DevOpsService {
       }
     } catch (error) {
       if (error.name === 'AbortError') throw error;
+      console.error(`GitHubService error: ${error.message}`);
       return await this.errorHandler(error, 'GitHubService');
     }
 
@@ -58,7 +66,7 @@ class GitHubService extends DevOpsService {
         'Custom.IssueURL': `<a href="${url}">${url}</a>`,
       }));
 
-      console.log('Issues Found:', issues.length);
+      this.logger('Issues Found:', issues.length);
 
       if (this.issuesDb) {
         await this.issuesDb.update('index.github.found.issues', issues);
@@ -108,7 +116,7 @@ class GitHubService extends DevOpsService {
         }
       }
 
-      console.log('Possible Matching Issues:', existingIssuesCount);
+      this.logger('Possible Matching Issues:', existingIssuesCount);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       return await this.errorHandler(error, 'GitHubService');
@@ -116,7 +124,7 @@ class GitHubService extends DevOpsService {
 
     try {
       if (existingIssuesDetails.length === 0) {
-        console.log('No Matching Issues Exist');
+        this.logger('No Matching Issues Exist');
       } else {
         if (this.issuesDb) {
           await this.issuesDb.update('index.github.devOps', existingIssuesDetails);
@@ -138,7 +146,7 @@ class GitHubService extends DevOpsService {
         return { status: 204, message: 'No new issues to add' };
       }
 
-      console.log('New Issues to Add:', unassignedIssues.length);
+      this.logger('New Issues to Add:', unassignedIssues.length);
 
       if (this.issuesDb) {
         await this.issuesDb.update('index.github.newIssues.issues', unassignedIssues);
@@ -154,15 +162,10 @@ class GitHubService extends DevOpsService {
 
   async getIssues({ org, repo, labels, ignoreLabels = [] }, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${repo} issues...`);
+    this.logger(`Fetching ${repo} issues...`);
     await sleep(300);
 
     checkAborted(signal);
-
-    const settings = await this.getSettings();
-    if (settings.useTestData) {
-      return this.getTestData();
-    }
 
     const config = await this.getGitHubConfig();
     if (labels) {
@@ -172,25 +175,28 @@ class GitHubService extends DevOpsService {
     }
   }
 
-  getTestData() {
-    return [
-      {
-        node: {
-          createdAt: '2024-08-19T21:43:47Z',
-          labels: { nodes: [{ name: 'bug' }, { name: 'Area: Teams' }] },
-          number: 6842,
-          repository: { name: 'botbuilder-dotnet' },
-          timelineItems: { edges: [] },
-          title: 'TeamsInfo.SendMessageToTeamsChannelAsync relies on old adapter',
-          url: 'https://github.com/microsoft/botbuilder-dotnet/issues/6842',
-        },
-      },
-    ];
+  async getTestData() {
+    if (this.jsonStore) {
+      try {
+        this.jsonStore.reloadTestData();
+        const data = await this.jsonStore.testDataDb.read();
+        if (data?.github && Array.isArray(data.github)) {
+          return data.github;
+        }
+        this.logger('Warning: Test data file missing or has invalid "github" array');
+      } catch (err) {
+        this.logger(`Warning: Failed to read test data file: ${err.message}`);
+      }
+    }
+    return [];
   }
 
   async getGitHubConfig() {
     const settings = await this.getSettings();
     const token = this.secretsStore ? await this.secretsStore.getGitHubToken() : null;
+    if (!token) {
+      throw new Error('GitHub token is not configured. Set it in Options → Settings → Credentials.');
+    }
     return {
       method: 'POST',
       url: settings.github?.apiUrl || 'https://api.github.com/graphql',
@@ -204,9 +210,13 @@ class GitHubService extends DevOpsService {
     for (const label of labels) {
       checkAborted(signal);
       const query = this.buildQuery(org, repo, label, ignoreLabels);
-      const response = this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
+      const response = await this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
 
       if (response instanceof Error) throw response;
+
+      if (response.data?.errors?.length) {
+        throw new Error(`GitHub GraphQL error: ${response.data.errors.map(e => e.message).join('; ')}`);
+      }
 
       const issues = response.data?.data?.search?.edges || [];
       this.logAndTrackResponse(issues, 'getIssuesWithLabels');
@@ -218,9 +228,13 @@ class GitHubService extends DevOpsService {
   async getIssuesWithoutLabels(org, repo, ignoreLabels, config, options = {}) {
     const { signal } = options;
     const query = this.buildQuery(org, repo, null, ignoreLabels);
-    const response = this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
+    const response = await this.handleServiceResponse(await this.fetchIssues(config, query, { signal }), 'GitHubService');
 
     if (response instanceof Error) throw response;
+
+    if (response.data?.errors?.length) {
+      throw new Error(`GitHub GraphQL error: ${response.data.errors.map(e => e.message).join('; ')}`);
+    }
 
     const issues = response.data?.data?.search?.edges || [];
     this.logAndTrackResponse(issues, 'getIssuesWithoutLabels');

@@ -48,6 +48,17 @@ function IssueTable({ issues, showDevOpsId = false, showRepo = false }) {
 function ServiceSection({ name, data, className, showRepo = false }) {
   if (!data) return null;
 
+  if (data.status === 'error') {
+    return (
+      <div className={`results-service ${className}`}>
+        <h2>{name}</h2>
+        <div className="service-error">
+          <p>Service error: {data.message}</p>
+        </div>
+      </div>
+    );
+  }
+
   const { found, devOps, newIssues } = data;
 
   return (

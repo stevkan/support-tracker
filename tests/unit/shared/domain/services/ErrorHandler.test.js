@@ -207,19 +207,19 @@ describe('ErrorHandler', () => {
 
   describe('handleServiceResponse', () => {
     describe('success responses', () => {
-      it('returns response for status 200', () => {
+      it('returns response for status 200', async () => {
         const res = { status: 200, data: 'success' };
 
-        const result = errorHandler.handleServiceResponse(res, 'TestService');
+        const result = await errorHandler.handleServiceResponse(res, 'TestService');
 
         expect(result).toBe(res);
         expect(consoleErrorSpy).not.toHaveBeenCalled();
       });
 
-      it('returns response for status 204', () => {
+      it('returns response for status 204', async () => {
         const res = { status: 204 };
 
-        const result = errorHandler.handleServiceResponse(res, 'TestService');
+        const result = await errorHandler.handleServiceResponse(res, 'TestService');
 
         expect(result).toBe(res);
         expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -293,18 +293,18 @@ describe('ErrorHandler', () => {
     });
 
     describe('non-error responses', () => {
-      it('returns response for status 201', () => {
+      it('returns response for status 201', async () => {
         const res = { status: 201, data: 'created' };
 
-        const result = errorHandler.handleServiceResponse(res, 'TestService');
+        const result = await errorHandler.handleServiceResponse(res, 'TestService');
 
         expect(result).toBe(res);
       });
 
-      it('returns response for status 301', () => {
+      it('returns response for status 301', async () => {
         const res = { status: 301 };
 
-        const result = errorHandler.handleServiceResponse(res, 'TestService');
+        const result = await errorHandler.handleServiceResponse(res, 'TestService');
 
         expect(result).toBe(res);
       });
@@ -315,9 +315,12 @@ describe('ErrorHandler', () => {
         const res = { status: 500 };
         const errorHandlerSpy = vi.spyOn(errorHandler, 'errorHandler');
 
-        errorHandler.handleServiceResponse(res, 'TestService');
+        await errorHandler.handleServiceResponse(res, 'TestService');
 
-        expect(errorHandlerSpy).toHaveBeenCalledWith(res, 'TestService');
+        expect(errorHandlerSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'TestService HTTP 500' }),
+          'TestService'
+        );
       });
     });
   });

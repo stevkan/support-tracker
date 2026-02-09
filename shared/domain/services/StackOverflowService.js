@@ -14,6 +14,7 @@ class StackOverflowService extends DevOpsService {
     this.lastRun = Math.floor(lastRun.getTime() / 1000);
     this.telemetryClient = telemetryClient;
     this.issuesDb = deps.jsonStore?.issuesDb;
+    this.logger = deps.logger || console.log;
   }
 
   async process(options = {}) {
@@ -25,14 +26,20 @@ class StackOverflowService extends DevOpsService {
     let issues = [];
 
     try {
-      for (const tag of this.tags) {
-        checkAborted(signal);
-        if (onProgress) {
-          onProgress(tag);
-        }
-        const result = await this.getIssues(tag, { signal });
-        if (result.length > 0) {
-          items.push(...result);
+      const settings = await this.getSettings();
+      if (settings.useTestData) {
+        const testItems = await this.getTestData();
+        items.push(...testItems);
+      } else {
+        for (const tag of this.tags) {
+          checkAborted(signal);
+          if (onProgress) {
+            onProgress(tag);
+          }
+          const result = await this.getIssues(tag, { signal });
+          if (result.length > 0) {
+            items.push(...result);
+          }
         }
       }
 
@@ -54,7 +61,7 @@ class StackOverflowService extends DevOpsService {
         'Custom.IssueURL': `<a href="${this.getUrl(question_id)}">${this.getUrl(question_id)}</a>`,
       }));
 
-      console.log('Posts Found:', issues.length);
+      this.logger('Posts Found:', issues.length);
 
       if (this.issuesDb) {
         const isInternal = this.tags.includes('bot-framework');
@@ -103,7 +110,7 @@ class StackOverflowService extends DevOpsService {
         }
       }
 
-      console.log('Possible Matching Issues:', existingIssuesCount);
+      this.logger('Possible Matching Issues:', existingIssuesCount);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       return await this.errorHandler(error, 'StackOverflowService');
@@ -111,7 +118,7 @@ class StackOverflowService extends DevOpsService {
 
     try {
       if (possibleDevOpsMatches.length === 0) {
-        console.log('No Matching Issues Exist');
+        this.logger('No Matching Issues Exist');
       } else {
         if (this.issuesDb) {
           const isInternal = this.tags.includes('bot-framework');
@@ -142,7 +149,7 @@ class StackOverflowService extends DevOpsService {
         return { status: 204, message: 'No new posts to add' };
       }
 
-      console.log('Posts New to DevOps:', unassignedIssues.length);
+      this.logger('Posts New to DevOps:', unassignedIssues.length);
 
       if (this.issuesDb) {
         const isInternal = this.tags.includes('bot-framework');
@@ -202,18 +209,13 @@ class StackOverflowService extends DevOpsService {
 
   async getIssues(tagged, options = {}) {
     const { signal } = options;
-    console.log(`Fetching ${tagged} tagged posts...`);
+    this.logger(`Fetching ${tagged} tagged posts...`);
     await sleep(1500);
 
     checkAborted(signal);
 
-    const settings = await this.getSettings();
-    if (settings.useTestData) {
-      return this.getTestData();
-    }
-
     const params = this.buildRequestParams(tagged, this.lastRun);
-    const response = this.handleServiceResponse(
+    const response = await this.handleServiceResponse(
       await this.fetchStackOverflowIssues(params, {}, { signal }),
       'StackOverflowService'
     );
@@ -224,17 +226,20 @@ class StackOverflowService extends DevOpsService {
     return response.data?.items || [];
   }
 
-  getTestData() {
-    return [
-      {
-        tags: ['azure', 'botframework', 'azure-bot-service'],
-        owner: { display_name: 'Test User' },
-        is_answered: false,
-        question_id: 78853530,
-        title: 'Test Stack Overflow Question',
-        body: '<p>Test body</p>',
-      },
-    ];
+  async getTestData() {
+    if (this.jsonStore) {
+      try {
+        this.jsonStore.reloadTestData();
+        const data = await this.jsonStore.testDataDb.read();
+        if (data?.stackOverflow && Array.isArray(data.stackOverflow)) {
+          return data.stackOverflow;
+        }
+        this.logger('Warning: Test data file missing or has invalid "stackOverflow" array');
+      } catch (err) {
+        this.logger(`Warning: Failed to read test data file: ${err.message}`);
+      }
+    }
+    return [];
   }
 
   getUrl(number) {
