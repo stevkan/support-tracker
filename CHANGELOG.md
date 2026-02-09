@@ -2,6 +2,31 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.9.0] - 2026-02-09
+
+### Added
+- Externalized test data to editable JSON file
+
+## [2.8.6] - 2026-02-09
+
+### Fixed
+- Routed verbose logs to renderer dev console via IPC and fixed settings setState warning
+
+## [2.8.5] - 2026-02-09
+
+### Fixed
+- Prevented Landing page blink on settings save by skipping loading state during refresh
+
+## [2.8.4] - 2026-02-09
+
+### Fixed
+- Surfaced service errors in UI with inline alerts and error banner
+
+## [2.8.3] - 2026-02-09
+
+### Fixed
+- Made handleServiceResponse async and awaited at all call sites to prevent silent error swallowing
+
 ## [2.8.2] - 2026-02-05
 
 ### Changed
