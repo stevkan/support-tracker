@@ -200,9 +200,15 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         },
       });
       if (ghResult instanceof Error) {
-        verboseLog('Query', 'GitHub service error:', ghResult.message);
-        results.services.github = { status: 'error', message: ghResult.message };
-        serviceErrors.push({ service: 'GitHub', message: ghResult.message });
+        const errorSource = ghResult._sourceService || 'GitHub';
+        verboseLog('Query', `${errorSource} service error:`, ghResult.message);
+        if (errorSource === 'Azure DevOps') {
+          // Azure DevOps error during GitHub processing — attribute correctly
+          serviceErrors.push({ service: 'Azure DevOps', message: ghResult.message });
+        } else {
+          results.services.github = { status: 'error', message: ghResult.message };
+          serviceErrors.push({ service: 'GitHub', message: ghResult.message });
+        }
       } else {
         results.services.github = ghResult;
       }

@@ -84,7 +84,9 @@ class GitHubService extends DevOpsService {
         const existingIssuesResponse = await this.searchWorkItemByIssueId(issue['Custom.IssueID'], { signal });
 
         if (existingIssuesResponse instanceof AxiosError) {
-          return this.errorHandler(existingIssuesResponse, 'GitHubService');
+          const devOpsError = await this.errorHandler(existingIssuesResponse, 'DevOpsService');
+          devOpsError._sourceService = 'Azure DevOps';
+          return devOpsError;
         }
 
         if (existingIssuesResponse.status === 200 && existingIssuesResponse.data.workItems.length === 0) {
@@ -119,6 +121,12 @@ class GitHubService extends DevOpsService {
       this.logger('Possible Matching Issues:', existingIssuesCount);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
+      // Preserve Azure DevOps attribution if set by searchWorkItemByIssueId or getWorkItemByUrl
+      if (error._sourceService === 'Azure DevOps' || error.name === 'DevOpsService') {
+        const devOpsError = await this.errorHandler(error, 'DevOpsService');
+        devOpsError._sourceService = 'Azure DevOps';
+        return devOpsError;
+      }
       return await this.errorHandler(error, 'GitHubService');
     }
 
@@ -156,6 +164,12 @@ class GitHubService extends DevOpsService {
       return await this.addIssues(unassignedIssues, { signal });
     } catch (error) {
       if (error.name === 'AbortError') throw error;
+      // addIssues calls Azure DevOps — attribute errors correctly
+      if (error._sourceService === 'Azure DevOps' || error.name === 'DevOpsService') {
+        const devOpsError = await this.errorHandler(error, 'DevOpsService');
+        devOpsError._sourceService = 'Azure DevOps';
+        return devOpsError;
+      }
       return await this.errorHandler(error, 'GitHubService');
     }
   }
