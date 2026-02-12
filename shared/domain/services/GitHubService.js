@@ -63,7 +63,7 @@ class GitHubService extends DevOpsService {
         'Custom.IssueType': this.source,
         'Custom.SDK': getSdk(name),
         'Custom.Repository': name.toLowerCase(),
-        'Custom.IssueURL': `<a href="${url}">${url}</a>`,
+        'Custom.IssueURL': url,
       }));
 
       this.logger('Issues Found:', issues.length);
