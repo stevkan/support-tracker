@@ -104,6 +104,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     const numberOfDays = queryParams.numberOfDaysToQuery || settings.queryDefaults?.numberOfDaysToQuery || 1;
     const startHour = queryParams.startHour || settings.queryDefaults?.startHour || 10;
+    const pushToDevOps = queryParams.pushToDevOps !== undefined ? queryParams.pushToDevOps : true;
 
     queryDate.setDate(queryDate.getDate() - numberOfDays);
     queryDate.setHours(startHour, 0, 0, 0);
@@ -133,7 +134,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
     // Pre-validate Azure DevOps credentials before running any services.
     // All services (SO, ISO, GitHub) call DevOps APIs via inherited methods,
     // so a bad PAT would fail them all — better to catch it upfront.
-    if (!useTestData && servicesToRun.length > 0) {
+    if (!useTestData && servicesToRun.length > 0 && pushToDevOps) {
       updateJob(jobId, {
         progress: { current: 0, total: servicesToRun.length, currentService: 'Validating Azure DevOps credentials' },
       });
@@ -194,6 +195,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Stack Overflow/${tag}` },
           });
         },
+        pushToDevOps,
       });
       if (soResult instanceof Error) {
         verboseLog('Query', 'Stack Overflow service error:', soResult.message);
@@ -223,6 +225,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `Internal Stack Overflow/${tag}` },
           });
         },
+        pushToDevOps,
       });
       if (isoResult instanceof Error) {
         verboseLog('Query', 'Internal Stack Overflow service error:', isoResult.message);
@@ -247,6 +250,7 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
             progress: { current: serviceIndex, total: servicesToRun.length, currentService: `GitHub/${repo}` },
           });
         },
+        pushToDevOps,
       });
       if (ghResult instanceof Error) {
         const errorSource = ghResult._sourceService || 'GitHub';
