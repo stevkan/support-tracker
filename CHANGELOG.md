@@ -2,6 +2,21 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.11.0] - 2026-02-12
+
+### Added
+- Pre-validation of Azure DevOps credentials before running any services to avoid unnecessary API calls
+
+## [2.10.0] - 2026-02-12
+
+### Added
+- Enhanced GitHub token validation to include GraphQL API checks
+
+## [2.9.1] - 2026-02-12
+
+### Fixed
+- Correctly attributed Azure DevOps PAT errors during GitHub service processing instead of mislabeling them as GitHub errors
+
 ## [2.9.0] - 2026-02-09
 
 ### Added
