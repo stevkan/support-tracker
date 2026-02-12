@@ -130,6 +130,55 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
 
     updateJob(jobId, { progress: { current: 0, total: servicesToRun.length, currentService: '' } });
 
+    // Pre-validate Azure DevOps credentials before running any services.
+    // All services (SO, ISO, GitHub) call DevOps APIs via inherited methods,
+    // so a bad PAT would fail them all — better to catch it upfront.
+    if (!useTestData && servicesToRun.length > 0) {
+      updateJob(jobId, {
+        progress: { current: 0, total: servicesToRun.length, currentService: 'Validating Azure DevOps credentials' },
+      });
+
+      const adoConfig = settings.azureDevOps || {};
+      const adoOrg = adoConfig.org;
+      const adoPat = await credentialService.getAzureDevOpsPat();
+
+      if (!adoOrg || !adoPat) {
+        const missing = !adoOrg ? 'Organization' : 'PAT';
+        serviceErrors.push({ service: 'Azure DevOps', message: `${missing} not configured` });
+        const endTime = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+        results.endTime = endTime;
+        results.serviceErrors = serviceErrors;
+        updateJob(jobId, {
+          status: 'completed',
+          result: results,
+          progress: { current: 0, total: servicesToRun.length, currentService: 'Done' },
+        });
+        return;
+      }
+
+      const adoUsername = await credentialService.getAzureDevOpsUsername();
+      const devOpsService = new DevOpsService(telemetryClient, deps);
+      const validation = await devOpsService.validateCredentials(
+        { org: adoOrg, username: adoUsername, pat: adoPat, apiVersion: adoConfig.apiVersion },
+        { signal }
+      );
+
+      if (!validation.valid) {
+        serviceErrors.push({ service: 'Azure DevOps', message: validation.error });
+        const endTime = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+        results.endTime = endTime;
+        results.serviceErrors = serviceErrors;
+        updateJob(jobId, {
+          status: 'completed',
+          result: results,
+          progress: { current: 0, total: servicesToRun.length, currentService: 'Done' },
+        });
+        return;
+      }
+
+      verboseLog('Query', 'Azure DevOps credentials validated successfully');
+    }
+
     let serviceIndex = 0;
 
     if (enabledServices.stackOverflow && job.status === 'running') {
