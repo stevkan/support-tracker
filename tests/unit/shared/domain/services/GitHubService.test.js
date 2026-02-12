@@ -1138,7 +1138,7 @@ describe('GitHubService', () => {
       );
     });
 
-    it('should include Custom.IssueURL with HTML anchor tag', async () => {
+    it('should include Custom.IssueURL as a plain URL', async () => {
       const mockIssues = [createMockGitHubIssue(12345, 'Test Issue')];
       axios.mockResolvedValue({ status: 200, data: { data: { search: { edges: mockIssues } } } });
       axios.request
@@ -1151,7 +1151,7 @@ describe('GitHubService', () => {
         'index.github.found.issues',
         expect.arrayContaining([
           expect.objectContaining({
-            'Custom.IssueURL': expect.stringContaining('<a href="https://github.com/microsoft/botbuilder-js/issues/12345">'),
+            'Custom.IssueURL': 'https://github.com/microsoft/botbuilder-js/issues/12345',
           }),
         ])
       );
