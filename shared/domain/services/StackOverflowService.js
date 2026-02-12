@@ -18,7 +18,7 @@ class StackOverflowService extends DevOpsService {
   }
 
   async process(options = {}) {
-    const { signal, onProgress } = options;
+    const { signal, onProgress, pushToDevOps = true } = options;
     const possibleDevOpsMatches = [];
     let existingIssuesCount = 0;
     const unassignedIssues = [];
@@ -156,6 +156,11 @@ class StackOverflowService extends DevOpsService {
         const key = isInternal ? 'internalStackOverflow' : 'stackOverflow';
         await this.issuesDb.update(`index.${key}.newIssues.issues`, unassignedIssues);
         await this.issuesDb.update(`index.${key}.newIssues.count`, unassignedIssues.length);
+      }
+
+      if (!pushToDevOps) {
+        this.logger('Skipping Azure DevOps push (disabled by user)');
+        return { status: 200, message: `${unassignedIssues.length} new post(s) found but not pushed to Azure DevOps` };
       }
 
       return await this.addIssues(unassignedIssues, { signal });

@@ -19,7 +19,7 @@ class GitHubService extends DevOpsService {
   }
 
   async process(options = {}) {
-    const { signal, onProgress } = options;
+    const { signal, onProgress, pushToDevOps = true } = options;
     const existingIssuesDetails = [];
     let existingIssuesCount = 0;
     const unassignedIssues = [];
@@ -159,6 +159,11 @@ class GitHubService extends DevOpsService {
       if (this.issuesDb) {
         await this.issuesDb.update('index.github.newIssues.issues', unassignedIssues);
         await this.issuesDb.update('index.github.newIssues.count', unassignedIssues.length);
+      }
+
+      if (!pushToDevOps) {
+        this.logger('Skipping Azure DevOps push (disabled by user)');
+        return { status: 200, message: `${unassignedIssues.length} new issue(s) found but not pushed to Azure DevOps` };
       }
 
       return await this.addIssues(unassignedIssues, { signal });

@@ -36,6 +36,7 @@ export function Landing() {
   });
   const [daysToQuery, setDaysToQuery] = useState('1');
   const [startHour, setStartHour] = useState('10');
+  const [pushToDevOps, setPushToDevOps] = useState(true);
 
   const pollingRef = useRef(null);
 
@@ -56,14 +57,18 @@ export function Landing() {
       if (settings.queryDefaults?.startHour !== undefined) {
         setStartHour(String(settings.queryDefaults.startHour));
       }
+      if (settings.pushToDevOps !== undefined) {
+        setPushToDevOps(settings.pushToDevOps);
+      }
       initializedRef.current = true;
     }
   }, [settings]);
 
-  const persistServiceOptions = useCallback(async (services, days, hour) => {
+  const persistServiceOptions = useCallback(async (services, days, hour, pushDevOps) => {
     try {
       await updateSettings({
         enabledServices: services,
+        pushToDevOps: pushDevOps,
         queryDefaults: {
           numberOfDaysToQuery: parseInt(days, 10) || 1,
           startHour: parseInt(hour, 10) || 10,
@@ -77,17 +82,23 @@ export function Landing() {
   const handleServiceToggle = (service) => {
     const updated = { ...enabledServices, [service]: !enabledServices[service] };
     setEnabledServices(updated);
-    persistServiceOptions(updated, daysToQuery, startHour);
+    persistServiceOptions(updated, daysToQuery, startHour, pushToDevOps);
   };
 
   const handleDaysChange = (value) => {
     setDaysToQuery(value);
-    persistServiceOptions(enabledServices, value, startHour);
+    persistServiceOptions(enabledServices, value, startHour, pushToDevOps);
   };
 
   const handleStartHourChange = (value) => {
     setStartHour(value);
-    persistServiceOptions(enabledServices, daysToQuery, value);
+    persistServiceOptions(enabledServices, daysToQuery, value, pushToDevOps);
+  };
+
+  const handlePushToDevOpsToggle = () => {
+    const updated = !pushToDevOps;
+    setPushToDevOps(updated);
+    persistServiceOptions(enabledServices, daysToQuery, startHour, updated);
   };
 
   useEffect(() => {
@@ -172,6 +183,7 @@ export function Landing() {
         const { jobId } = await startQuery(enabledServices, {
           numberOfDaysToQuery: parseInt(daysToQuery, 10) || 1,
           startHour: parseInt(startHour, 10) || 10,
+          pushToDevOps,
         });
         setCurrentJobId(jobId);
 
@@ -335,6 +347,21 @@ export function Landing() {
             />
             <span>Internal Stack Overflow</span>
           </label>
+        </div>
+
+        <div className="devops-toggle-row">
+          <div className="toggle-group">
+            <span className="toggle-label">Push new issues to Azure DevOps</span>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={pushToDevOps}
+                onChange={handlePushToDevOpsToggle}
+                disabled={isRunning}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
         </div>
 
         <div className="service-inputs">

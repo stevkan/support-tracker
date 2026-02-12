@@ -44,7 +44,7 @@
   flex-wrap: wrap;
   gap: 12px 24px;
   margin-bottom: 20px;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .checkbox-label {
@@ -248,4 +248,69 @@
   align-items: center;
   min-height: 200px;
   color: var(--text-secondary);
+}
+
+.devops-toggle-row {
+  margin-bottom: 20px;
+}
+
+.devops-toggle-row .toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.devops-toggle-row .toggle-label {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.devops-toggle-row .toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.devops-toggle-row .toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.devops-toggle-row .toggle-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.devops-toggle-row .toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.devops-toggle-row .toggle-switch input:checked + .toggle-slider {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.devops-toggle-row .toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+  background-color: #ffffff;
+}
+
+.devops-toggle-row .toggle-switch input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
