@@ -2,6 +2,16 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.12.1] - 2026-02-12
+
+### Fixed
+- Issue ID links in query results failing to open due to `Custom.IssueURL` being stored as HTML anchor tags instead of plain URLs, causing double-wrapping and URL-encoded addresses
+
+## [2.12.0] - 2026-02-12
+
+### Added
+- Option to toggle pushing new issues to Azure DevOps
+
 ## [2.11.0] - 2026-02-12
 
 ### Added
