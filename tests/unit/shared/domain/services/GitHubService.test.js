@@ -444,6 +444,10 @@ describe('GitHubService', () => {
         status: 200,
         data: { login: 'testuser' },
       });
+      axios.post.mockResolvedValue({
+        status: 200,
+        data: { data: { viewer: { login: 'testuser' } } },
+      });
 
       const result = await GitHubService.validateToken('valid-token');
 
@@ -451,10 +455,19 @@ describe('GitHubService', () => {
       expect(axios.get).toHaveBeenCalledWith(
         'https://api.github.com/user',
         expect.objectContaining({
-          headers: {
+          headers: expect.objectContaining({
             Authorization: 'Bearer valid-token',
             Accept: 'application/vnd.github.v3+json',
-          },
+          }),
+        })
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.github.com/graphql',
+        { query: '{ viewer { login } }' },
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer valid-token',
+          }),
         })
       );
     });
@@ -543,11 +556,22 @@ describe('GitHubService', () => {
         status: 200,
         data: { login: 'testuser' },
       });
+      axios.post.mockResolvedValue({
+        status: 200,
+        data: { data: { viewer: { login: 'testuser' } } },
+      });
 
       await GitHubService.validateToken('token', { signal: controller.signal });
 
       expect(axios.get).toHaveBeenCalledWith(
         'https://api.github.com/user',
+        expect.objectContaining({
+          signal: controller.signal,
+        })
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.github.com/graphql',
+        expect.any(Object),
         expect.objectContaining({
           signal: controller.signal,
         })
@@ -559,6 +583,10 @@ describe('GitHubService', () => {
         status: 200,
         data: { login: 'testuser' },
       });
+      axios.post.mockResolvedValue({
+        status: 200,
+        data: { data: { viewer: { login: 'testuser' } } },
+      });
 
       await GitHubService.validateToken('token');
 
@@ -568,6 +596,66 @@ describe('GitHubService', () => {
           timeout: 10000,
         })
       );
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.github.com/graphql',
+        expect.any(Object),
+        expect.objectContaining({
+          timeout: 10000,
+        })
+      );
+    });
+
+    it('returns error when GraphQL returns 401', async () => {
+      axios.get.mockResolvedValue({
+        status: 200,
+        data: { login: 'testuser' },
+      });
+      axios.post.mockRejectedValue({
+        response: { status: 401 },
+      });
+
+      const result = await GitHubService.validateToken('token');
+
+      expect(result).toEqual({ valid: false, error: 'GitHub token is valid but lacks GraphQL API access (check token scopes)' });
+    });
+
+    it('returns error when GraphQL returns 403', async () => {
+      axios.get.mockResolvedValue({
+        status: 200,
+        data: { login: 'testuser' },
+      });
+      axios.post.mockRejectedValue({
+        response: { status: 403 },
+      });
+
+      const result = await GitHubService.validateToken('token');
+
+      expect(result).toEqual({ valid: false, error: 'GitHub token lacks permissions for GraphQL API' });
+    });
+
+    it('returns error when GraphQL response is missing viewer login', async () => {
+      axios.get.mockResolvedValue({
+        status: 200,
+        data: { login: 'testuser' },
+      });
+      axios.post.mockResolvedValue({
+        status: 200,
+        data: { data: {} },
+      });
+
+      const result = await GitHubService.validateToken('token');
+
+      expect(result).toEqual({ valid: false, error: 'GitHub token is valid but lacks GraphQL API access (check token scopes)' });
+    });
+
+    it('does not call GraphQL when REST validation fails', async () => {
+      axios.get.mockRejectedValue({
+        response: { status: 401 },
+      });
+
+      await GitHubService.validateToken('bad-token');
+
+      expect(axios.post).not.toHaveBeenCalled();
     });
   });
 

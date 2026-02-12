@@ -314,7 +314,8 @@ class GitHubService extends DevOpsService {
   }
 
   /**
-   * Validates a GitHub token by calling the user endpoint.
+   * Validates a GitHub token by calling the REST user endpoint
+   * and the GraphQL API to ensure the token works for both.
    * @param {string} token - The GitHub token to validate
    * @param {Object} options - { signal } for AbortController
    * @returns {Promise<{ valid: boolean, error?: string }>}
@@ -326,20 +327,22 @@ class GitHubService extends DevOpsService {
       return { valid: false, error: 'GitHub token is required' };
     }
 
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Step 1: Validate against REST API
     try {
       const response = await axios.get('https://api.github.com/user', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
+        headers: { ...headers, Accept: 'application/vnd.github.v3+json' },
         signal,
         timeout: 10000,
       });
 
-      if (response.status === 200 && response.data?.login) {
-        return { valid: true };
+      if (!(response.status === 200 && response.data?.login)) {
+        return { valid: false, error: 'Unexpected response from GitHub' };
       }
-      return { valid: false, error: 'Unexpected response from GitHub' };
     } catch (error) {
       if (error.response) {
         const status = error.response.status;
@@ -356,6 +359,33 @@ class GitHubService extends DevOpsService {
       }
       return { valid: false, error: error.message || 'Validation failed' };
     }
+
+    // Step 2: Validate against GraphQL API
+    try {
+      const graphqlResponse = await axios.post(
+        'https://api.github.com/graphql',
+        { query: '{ viewer { login } }' },
+        { headers, signal, timeout: 10000 }
+      );
+
+      if (!(graphqlResponse.status === 200 && graphqlResponse.data?.data?.viewer?.login)) {
+        return { valid: false, error: 'GitHub token is valid but lacks GraphQL API access (check token scopes)' };
+      }
+    } catch (error) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return { valid: false, error: 'GitHub token is valid but lacks GraphQL API access (check token scopes)' };
+        }
+        if (status === 403) {
+          return { valid: false, error: 'GitHub token lacks permissions for GraphQL API' };
+        }
+        return { valid: false, error: `GitHub GraphQL API error: ${status}` };
+      }
+      return { valid: false, error: error.message || 'GraphQL validation failed' };
+    }
+
+    return { valid: true };
   }
 }
 
