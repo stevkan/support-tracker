@@ -7,9 +7,13 @@ async function getBaseUrl() {
 
 async function apiFetch(path, options = {}) {
   const baseUrl = await getBaseUrl();
+  const headers = { ...options.headers };
+  if (options.body) {
+    headers['Content-Type'] = 'application/json';
+  }
   const response = await fetch(`${baseUrl}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    headers,
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

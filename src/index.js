@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import chalk from 'chalk';
 import axios from 'axios';
 import { Command, InvalidArgumentError } from 'commander';
@@ -46,8 +45,6 @@ function buildServiceConfigs(settings) {
 
   return { GitHub, StackOverflow, InternalStackOverflow };
 }
-
-dotenv.config(process.env);
 
 const issuesDb = jsonStore.issuesDb;
 const settingsDb = jsonStore.settingsDb;
