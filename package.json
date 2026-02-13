@@ -7,6 +7,8 @@
   "main": "src/index.js",
   "bin": {
     "support-tracker": "src/index.js"
+  },"engines": {
+    "node": ">=20"
   },
   "scripts": {
     "cli": "node src/index.js",
@@ -27,7 +29,7 @@
     "applicationinsights": "^2.1.8",
     "axios": "^1.13.5",
     "chalk": "^5.6.2",
-    "commander": "^12.1.0",
+    "commander": "^14.0.3",
     "crypto-js": "^4.2.0",
     "env-paths": "^4.0.0",
     "fastify": "^5.7.4",
