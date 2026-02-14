@@ -20,7 +20,7 @@ async function getSecret(key) {
     case 'stack-overflow-key':
       return await secretsStore.getStackOverflowKey();
     case 'appinsights-key':
-      return await secretsStore.getAppInsightsKey();
+      return await secretsStore.getAppInsightsConnectionString();
     default:
       return null;
   }
@@ -41,7 +41,7 @@ async function setSecret(key, value) {
       await secretsStore.setStackOverflowKey(value);
       break;
     case 'appinsights-key':
-      await secretsStore.setAppInsightsKey(value);
+      await secretsStore.setAppInsightsConnectionString(value);
       break;
   }
 }

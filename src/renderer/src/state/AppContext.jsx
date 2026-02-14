@@ -70,7 +70,7 @@ export function AppProvider({ children }) {
         addError('API Keys', 'Stack Overflow Enterprise Key is required');
       }
       if (!secretStatus['appinsights-key']) {
-        addError('API Keys', 'App Insights Instrumentation Key is required');
+        addError('API Keys', 'App Insights Connection String is required');
       }
     } catch (err) {
       console.error('Failed to check secrets:', err);

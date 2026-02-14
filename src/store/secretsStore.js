@@ -5,7 +5,7 @@ const SERVICE_NAME = 'support-tracker';
 const SecretKeys = {
   GITHUB_TOKEN: 'github-token',
   STACK_OVERFLOW_ENTERPRISE_KEY: 'stack-overflow-key',
-  APPINSIGHTS_INSTRUMENTATION_KEY: 'appinsights-key',
+  APPINSIGHTS_CONNECTION_STRING: 'appinsights-key',
 };
 
 class SecretsStore {
@@ -37,12 +37,12 @@ class SecretsStore {
     await this.setSecret(SecretKeys.STACK_OVERFLOW_ENTERPRISE_KEY, key);
   }
 
-  async getAppInsightsKey() {
-    return await this.getSecret(SecretKeys.APPINSIGHTS_INSTRUMENTATION_KEY);
+  async getAppInsightsConnectionString() {
+    return await this.getSecret(SecretKeys.APPINSIGHTS_CONNECTION_STRING);
   }
 
-  async setAppInsightsKey(key) {
-    await this.setSecret(SecretKeys.APPINSIGHTS_INSTRUMENTATION_KEY, key);
+  async setAppInsightsConnectionString(value) {
+    await this.setSecret(SecretKeys.APPINSIGHTS_CONNECTION_STRING, value);
   }
 
   async migrateFromEnv() {
@@ -52,8 +52,8 @@ class SecretsStore {
     if (process.env.STACK_OVERFLOW_ENTERPRISE_KEY) {
       await this.setStackOverflowKey(process.env.STACK_OVERFLOW_ENTERPRISE_KEY);
     }
-    if (process.env.APPINSIGHTS_INSTRUMENTATION_KEY) {
-      await this.setAppInsightsKey(process.env.APPINSIGHTS_INSTRUMENTATION_KEY);
+    if (process.env.APPINSIGHTS_CONNECTION_STRING) {
+      await this.setAppInsightsConnectionString(process.env.APPINSIGHTS_CONNECTION_STRING);
     }
   }
 }

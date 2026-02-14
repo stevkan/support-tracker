@@ -174,7 +174,7 @@ export default function SettingsTab({ onNavigateTab }) {
         return [
           { key: 'githubToken', label: 'GitHub Token', type: 'password', isSecret: true },
           { key: 'stackOverflowKey', label: 'Stack Overflow Enterprise Key', type: 'password', isSecret: true },
-          { key: 'appInsightsKey', label: 'App Insights Instrumentation Key', type: 'password', isSecret: true },
+          { key: 'appInsightsKey', label: 'App Insights Connection String', type: 'password', isSecret: true },
         ];
       case 'advanced':
         return [

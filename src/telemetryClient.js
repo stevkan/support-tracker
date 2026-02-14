@@ -21,11 +21,9 @@ class TelemetryClient {
    * @returns {Promise<TelemetryClient>}
    */
   static async create() {
-    const instrumentationKey = await secretsStore.getAppInsightsKey();
+    const connectionString = await secretsStore.getAppInsightsConnectionString();
     
-    applicationInsights.Configuration.setAutoCollectConsole(true, true);
-    applicationInsights.Configuration.setAutoCollectRequests(true, true);
-    applicationInsights.setup(instrumentationKey).start();
+    applicationInsights.setup(connectionString).setAutoCollectConsole(true, true).setAutoCollectRequests(true).start();
     
     const settings = await jsonStore.settingsDb.read();
 
@@ -36,7 +34,7 @@ class TelemetryClient {
     }
     
     const telemetry = applicationInsights.defaultClient;
-    telemetry.context.tags['ai.cloud.role'] = 'Support-Tracker-App';
+    telemetry.context.tags[telemetry.context.keys.cloudRole] = 'Support-Tracker-App';
     
     return new TelemetryClient(telemetry);
   }
@@ -79,18 +77,6 @@ class TelemetryClient {
     });
   }
   
-  /**
-   * Tracks an HTTP request and response.
-   * @param {http.IncomingMessage} request - The incoming HTTP request.
-   * @param {http.ServerResponse} response - The outgoing HTTP response.
-   */
-  trackHttpRequestAndResponse(request, response) {
-    this.telemetry.trackNodeHttpRequest({
-      request: request,
-      response: response
-    });
-  }
-
   /**
    * Tracks a custom metric with optional parameters.
    * @param {string} name - The name of the metric to track.
