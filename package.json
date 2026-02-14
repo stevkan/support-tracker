@@ -12,7 +12,6 @@
   },
   "scripts": {
     "cli": "node src/index.js",
-    "migrate:secrets": "dotenvx run --env-file .env -- node scripts/migrateSecrets.js",
     "dev": "npm run update-version && concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:electron": "cross-env NODE_ENV=development electron src/main/main.js",
     "dev:renderer": "vite --config src/renderer/vite.config.js",
