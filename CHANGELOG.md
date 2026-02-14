@@ -2,6 +2,17 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.12.2] - 2026-02-13
+
+### Changed
+- Updated Application Insights instrumentation key to connection string across the application
+- Updated dependencies: electron, electron-builder, cross-env, commander, axios, and others for improved performance and compatibility
+- Added Node.js engine requirement (>=20) to package.json
+- Improved logging in GitHubService
+
+### Removed
+- Removed `.env-template` and `migrateSecrets.js` script to streamline configuration
+
 ## [2.12.1] - 2026-02-12
 
 ### Fixed
