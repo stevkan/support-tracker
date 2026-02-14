@@ -149,6 +149,8 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         const endTime = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
         results.endTime = endTime;
         results.serviceErrors = serviceErrors;
+        await jsonStore.issuesDb.update('index.endTime', endTime);
+        results.issues = await jsonStore.issuesDb.read();
         updateJob(jobId, {
           status: 'completed',
           result: results,
@@ -169,6 +171,8 @@ async function runQueryJob(jobId, enabledServices, queryParams) {
         const endTime = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
         results.endTime = endTime;
         results.serviceErrors = serviceErrors;
+        await jsonStore.issuesDb.update('index.endTime', endTime);
+        results.issues = await jsonStore.issuesDb.read();
         updateJob(jobId, {
           status: 'completed',
           result: results,

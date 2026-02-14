@@ -8,7 +8,7 @@ import { validationRoutes } from './routes/validation.js';
 export async function buildServer() {
   const fastify = Fastify({ logger: true });
   
-  await fastify.register(cors, { origin: true });
+  await fastify.register(cors, { origin: true, methods: 'GET,HEAD,PUT,PATCH,POST,DELETE' });
   
   fastify.register(settingsRoutes, { prefix: '/api/settings' });
   fastify.register(secretsRoutes, { prefix: '/api/secrets' });

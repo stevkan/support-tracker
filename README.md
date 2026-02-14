@@ -75,7 +75,7 @@ Configured via the desktop app Settings UI or `.env` file (for `npm run migrate:
 | `AZURE_DEVOPS_ORG` | Azure DevOps Organization |
 | `AZURE_DEVOPS_PROJECT` | Azure DevOps Project |
 | `AZURE_DEVOPS_API_VERSION` | API Version (`6.1` or `7.1`) |
-| `APPINSIGHTS_INSTRUMENTATION_KEY` | Application Insights key |
+| `APPINSIGHTS_CONNECTION_STRING` | Application Insights connection string |
 | `GITHUB_TOKEN` | GitHub Personal Access Token |
 | `GITHUB_API_URL` | GitHub API URL |
 | `STACK_OVERFLOW_ENTERPRISE_KEY` | Stack Overflow Enterprise key |
