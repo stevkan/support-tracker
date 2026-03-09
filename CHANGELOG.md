@@ -2,6 +2,11 @@
 
 All notable changes to Support Tracker are documented in this file.
 
+## [2.12.3] - 2026-03-09
+
+### Fixed
+- Restored clickable Issue URL links in Azure DevOps work items by wrapping URLs in HTML anchor tags for GitHub, Stack Overflow, and Internal Stack Overflow services
+
 ## [2.12.2] - 2026-02-13
 
 ### Changed
