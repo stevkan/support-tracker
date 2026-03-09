@@ -1,6 +1,6 @@
 # Support Tracker
 
-**Current Version**: [v2.8.2](https://github.com/stevkan/support-tracker/releases/tag/2.8.2)
+**Current Version**: [v2.12.3](https://github.com/stevkan/support-tracker/releases/tag/2.12.3)
 
 An Electron desktop app (with CLI) that queries GitHub, Stack Overflow, and Internal Stack Overflow for issues and creates Azure DevOps work items.
 
@@ -68,7 +68,7 @@ npm run cli set-verbosity true
 
 ## Environment Variables
 
-Configured via the desktop app Settings UI or `.env` file (for `npm run migrate:secrets`).
+Configured via the desktop app Settings UI.
 
 | Variable | Description |
 | --- | --- |
