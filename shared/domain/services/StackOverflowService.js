@@ -58,7 +58,7 @@ class StackOverflowService extends DevOpsService {
         'System.Title': title.slice(0, 255).toString(),
         'Custom.IssueID': question_id,
         'Custom.IssueType': this.source,
-        'Custom.IssueURL': this.getUrl(question_id),
+        'Custom.IssueURL': `<a href="${this.getUrl(question_id)}">${this.getUrl(question_id)}</a>`,
       }));
 
       this.logger('Posts Found:', issues.length);
